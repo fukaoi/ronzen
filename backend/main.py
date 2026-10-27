@@ -15,10 +15,13 @@ from .council import run_full_council, generate_conversation_title, stage1_colle
 
 app = FastAPI(title="LLM Council API")
 
-# Enable CORS for local development
+# Enable CORS for local development.
+# Any loopback origin is allowed because Vite falls back to another port
+# (5174, 5175, ...) whenever 5173 is already taken, and a hard-coded list
+# would turn that into an opaque CORS preflight failure.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1|\[::1\]):\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

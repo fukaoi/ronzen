@@ -134,7 +134,7 @@ export default function ChatInterface({
     return (
       <div className="chat-interface">
         <div className="empty-state">
-          <h2>Welcome to LLM Council</h2>
+          <h2>Welcome to LLM Council2</h2>
           <p>Create a new conversation to get started</p>
         </div>
       </div>
