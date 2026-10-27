@@ -16,6 +16,12 @@ OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 # Data directory for conversation storage
 DATA_DIR = "data/conversations"
 
+# Directory for uploaded images
+UPLOAD_DIR = "data/uploads"
+
+# Maximum size of a single uploaded image (bytes)
+MAX_IMAGE_BYTES = 10 * 1024 * 1024
+
 COUNCIL_MODELS = [
     "~openai/gpt-astra-latest",
     "anthropic/claude-opus-5",

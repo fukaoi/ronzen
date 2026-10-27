@@ -2,15 +2,16 @@
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+import os
 import uuid
 import json
 import asyncio
 
 from . import storage
-from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings
+from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings, build_user_content
 
 app = FastAPI(title="LLM Council API")
 
@@ -31,7 +32,19 @@ class CreateConversationRequest(BaseModel):
 
 class SendMessageRequest(BaseModel):
     """Request to send a message in a conversation."""
-    content: str
+    content: str = ""
+    images: List[str] = []
+
+
+class UploadImagesRequest(BaseModel):
+    """Request to upload images as base64 data URLs."""
+    images: List[str]
+
+
+class UploadedImage(BaseModel):
+    """An image that has been stored on the server."""
+    filename: str
+    url: str
 
 
 class ConversationMetadata(BaseModel):
@@ -50,10 +63,86 @@ class Conversation(BaseModel):
     messages: List[Dict[str, Any]]
 
 
+def resolve_images(filenames: List[str]) -> List[str]:
+    """
+    Turn stored image filenames into data URLs for the LLM request.
+
+    Missing files are skipped so a lost upload never breaks the conversation.
+    """
+    resolved = []
+    for filename in filenames:
+        data_url = storage.read_image_as_data_url(filename)
+        if data_url:
+            resolved.append(data_url)
+    return resolved
+
+
+def build_history_messages(conversation: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Build the prior turns of a conversation as OpenRouter messages.
+
+    User turns keep their attached images; assistant turns are represented by
+    the chairman's final answer, which is what the user actually replied to.
+    """
+    history: List[Dict[str, Any]] = []
+
+    for message in conversation.get("messages", []):
+        if message.get("role") == "user":
+            images = resolve_images(message.get("images", []))
+            history.append({
+                "role": "user",
+                "content": build_user_content(message.get("content", ""), images)
+            })
+        elif message.get("role") == "assistant":
+            final_response = (message.get("stage3") or {}).get("response")
+            if final_response:
+                history.append({
+                    "role": "assistant",
+                    "content": final_response
+                })
+
+    return history
+
+
+def validate_message_request(request: SendMessageRequest):
+    """Reject a message that has neither text nor images."""
+    if not request.content.strip() and not request.images:
+        raise HTTPException(
+            status_code=400,
+            detail="A message must have text or at least one image"
+        )
+
+
 @app.get("/")
 async def root():
     """Health check endpoint."""
     return {"status": "ok", "service": "LLM Council API"}
+
+
+@app.post("/api/uploads", response_model=List[UploadedImage])
+async def upload_images(request: UploadImagesRequest):
+    """Store base64 data URL images and return the URLs to reference them by."""
+    uploaded = []
+    for data_url in request.images:
+        try:
+            saved = storage.save_image_from_data_url(data_url)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        uploaded.append({
+            "filename": saved["filename"],
+            "url": f"/api/uploads/{saved['filename']}"
+        })
+
+    return uploaded
+
+
+@app.get("/api/uploads/{filename}")
+async def get_upload(filename: str):
+    """Serve an uploaded image."""
+    path = storage.get_upload_path(filename)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(path)
 
 
 @app.get("/api/conversations", response_model=List[ConversationMetadata])
@@ -85,6 +174,8 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
     Send a message and run the 3-stage council process.
     Returns the complete response with all stages.
     """
+    validate_message_request(request)
+
     # Check if conversation exists
     conversation = storage.get_conversation(conversation_id)
     if conversation is None:
@@ -93,8 +184,12 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
     # Check if this is the first message
     is_first_message = len(conversation["messages"]) == 0
 
+    # Capture the earlier turns before this message is appended
+    history = build_history_messages(conversation)
+    images = resolve_images(request.images)
+
     # Add user message
-    storage.add_user_message(conversation_id, request.content)
+    storage.add_user_message(conversation_id, request.content, request.images)
 
     # If this is the first message, generate a title
     if is_first_message:
@@ -103,7 +198,9 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
 
     # Run the 3-stage council process
     stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
-        request.content
+        request.content,
+        images,
+        history
     )
 
     # Add assistant message with all stages
@@ -129,6 +226,8 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
     Send a message and stream the 3-stage council process.
     Returns Server-Sent Events as each stage completes.
     """
+    validate_message_request(request)
+
     # Check if conversation exists
     conversation = storage.get_conversation(conversation_id)
     if conversation is None:
@@ -137,10 +236,14 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
     # Check if this is the first message
     is_first_message = len(conversation["messages"]) == 0
 
+    # Capture the earlier turns before this message is appended
+    history = build_history_messages(conversation)
+    images = resolve_images(request.images)
+
     async def event_generator():
         try:
             # Add user message
-            storage.add_user_message(conversation_id, request.content)
+            storage.add_user_message(conversation_id, request.content, request.images)
 
             # Start title generation in parallel (don't await yet)
             title_task = None
@@ -149,18 +252,18 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
 
             # Stage 1: Collect responses
             yield f"data: {json.dumps({'type': 'stage1_start'})}\n\n"
-            stage1_results = await stage1_collect_responses(request.content)
+            stage1_results = await stage1_collect_responses(request.content, images, history)
             yield f"data: {json.dumps({'type': 'stage1_complete', 'data': stage1_results})}\n\n"
 
             # Stage 2: Collect rankings
             yield f"data: {json.dumps({'type': 'stage2_start'})}\n\n"
-            stage2_results, label_to_model = await stage2_collect_rankings(request.content, stage1_results)
+            stage2_results, label_to_model = await stage2_collect_rankings(request.content, stage1_results, images, history)
             aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
             yield f"data: {json.dumps({'type': 'stage2_complete', 'data': stage2_results, 'metadata': {'label_to_model': label_to_model, 'aggregate_rankings': aggregate_rankings}})}\n\n"
 
             # Stage 3: Synthesize final answer
             yield f"data: {json.dumps({'type': 'stage3_start'})}\n\n"
-            stage3_result = await stage3_synthesize_final(request.content, stage1_results, stage2_results)
+            stage3_result = await stage3_synthesize_final(request.content, stage1_results, stage2_results, images, history)
             yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_result})}\n\n"
 
             # Wait for title generation if it was started

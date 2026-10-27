@@ -3,7 +3,20 @@ import ReactMarkdown from 'react-markdown';
 import Stage1 from './Stage1';
 import Stage2 from './Stage2';
 import Stage3 from './Stage3';
+import { api } from '../api';
 import './ChatInterface.css';
+
+/**
+ * Read a File as a base64 data URL.
+ */
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function ChatInterface({
   conversation,
@@ -11,7 +24,12 @@ export default function ChatInterface({
   isLoading,
 }) {
   const [input, setInput] = useState('');
+  const [attachments, setAttachments] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -21,12 +39,87 @@ export default function ChatInterface({
     scrollToBottom();
   }, [conversation]);
 
+  // Clear the composer when switching conversations
+  useEffect(() => {
+    setInput('');
+    setAttachments([]);
+    setUploadError(null);
+  }, [conversation?.id]);
+
+  const addFiles = async (files) => {
+    const imageFiles = Array.from(files).filter((file) =>
+      file.type.startsWith('image/')
+    );
+    if (imageFiles.length === 0) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const dataUrls = await Promise.all(imageFiles.map(readFileAsDataUrl));
+      const uploaded = await api.uploadImages(dataUrls);
+      setAttachments((prev) => [...prev, ...uploaded]);
+    } catch (error) {
+      console.error('Failed to upload images:', error);
+      setUploadError(error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    addFiles(e.target.files);
+    // Reset so selecting the same file again still fires onChange
+    e.target.value = '';
+  };
+
+  const handlePaste = (e) => {
+    if (e.clipboardData?.files?.length) {
+      const hasImage = Array.from(e.clipboardData.files).some((file) =>
+        file.type.startsWith('image/')
+      );
+      if (hasImage) {
+        e.preventDefault();
+        addFiles(e.clipboardData.files);
+      }
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer?.files?.length) {
+      addFiles(e.dataTransfer.files);
+    }
+  };
+
+  const removeAttachment = (filename) => {
+    setAttachments((prev) => prev.filter((img) => img.filename !== filename));
+  };
+
+  const canSend =
+    (input.trim() || attachments.length > 0) && !isLoading && !isUploading;
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (input.trim() && !isLoading) {
-      onSendMessage(input);
-      setInput('');
-    }
+    if (!canSend) return;
+
+    onSendMessage(
+      input,
+      attachments.map((img) => img.filename)
+    );
+    setInput('');
+    setAttachments([]);
+    setUploadError(null);
   };
 
   const handleKeyDown = (e) => {
@@ -63,9 +156,28 @@ export default function ChatInterface({
                 <div className="user-message">
                   <div className="message-label">You</div>
                   <div className="message-content">
-                    <div className="markdown-content">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
-                    </div>
+                    {msg.images?.length > 0 && (
+                      <div className="message-images">
+                        {msg.images.map((filename) => (
+                          <a
+                            key={filename}
+                            href={api.imageUrl(filename)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <img
+                              src={api.imageUrl(filename)}
+                              alt="Attached image"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    {msg.content && (
+                      <div className="markdown-content">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -120,26 +232,75 @@ export default function ChatInterface({
         <div ref={messagesEndRef} />
       </div>
 
-      {conversation.messages.length === 0 && (
-        <form className="input-form" onSubmit={handleSubmit}>
+      <form
+        className={`input-form ${isDragging ? 'dragging' : ''}`}
+        onSubmit={handleSubmit}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {attachments.length > 0 && (
+          <div className="attachment-previews">
+            {attachments.map((img) => (
+              <div key={img.filename} className="attachment-preview">
+                <img src={api.imageUrl(img.filename)} alt="Attachment" />
+                <button
+                  type="button"
+                  className="attachment-remove"
+                  onClick={() => removeAttachment(img.filename)}
+                  title="Remove image"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {isUploading && (
+          <div className="attachment-status">
+            <div className="spinner"></div>
+            <span>Uploading image...</span>
+          </div>
+        )}
+
+        {uploadError && (
+          <div className="attachment-error">{uploadError}</div>
+        )}
+
+        <div className="input-row">
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            multiple
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+          />
+          <button
+            type="button"
+            className="attach-button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading || isUploading}
+            title="Attach images"
+          >
+            🖼️
+          </button>
           <textarea
             className="message-input"
-            placeholder="Ask your question... (Shift+Enter for new line, Enter to send)"
+            placeholder="Ask your question... (Shift+Enter for new line, Enter to send. Drop or paste images to discuss them)"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             disabled={isLoading}
             rows={3}
           />
-          <button
-            type="submit"
-            className="send-button"
-            disabled={!input.trim() || isLoading}
-          >
+          <button type="submit" className="send-button" disabled={!canSend}>
             Send
           </button>
-        </form>
-      )}
+        </div>
+      </form>
     </div>
   );
 }

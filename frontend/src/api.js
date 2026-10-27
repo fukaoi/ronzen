@@ -47,9 +47,40 @@ export const api = {
   },
 
   /**
-   * Send a message in a conversation.
+   * Upload images as base64 data URLs.
+   * @param {string[]} dataUrls - Images encoded as "data:image/...;base64,..."
+   * @returns {Promise<Array<{filename: string, url: string}>>}
    */
-  async sendMessage(conversationId, content) {
+  async uploadImages(dataUrls) {
+    const response = await fetch(`${API_BASE}/api/uploads`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ images: dataUrls }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      throw new Error(error?.detail || 'Failed to upload images');
+    }
+    return response.json();
+  },
+
+  /**
+   * Build the URL for an uploaded image.
+   * @param {string} filename - Filename returned by uploadImages
+   */
+  imageUrl(filename) {
+    return `${API_BASE}/api/uploads/${filename}`;
+  },
+
+  /**
+   * Send a message in a conversation.
+   * @param {string} conversationId - The conversation ID
+   * @param {string} content - The message content
+   * @param {string[]} images - Filenames of uploaded images to attach
+   */
+  async sendMessage(conversationId, content, images = []) {
     const response = await fetch(
       `${API_BASE}/api/conversations/${conversationId}/message`,
       {
@@ -57,7 +88,7 @@ export const api = {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, images }),
       }
     );
     if (!response.ok) {
@@ -70,10 +101,11 @@ export const api = {
    * Send a message and receive streaming updates.
    * @param {string} conversationId - The conversation ID
    * @param {string} content - The message content
+   * @param {string[]} images - Filenames of uploaded images to attach
    * @param {function} onEvent - Callback function for each event: (eventType, data) => void
    * @returns {Promise<void>}
    */
-  async sendMessageStream(conversationId, content, onEvent) {
+  async sendMessageStream(conversationId, content, images, onEvent) {
     const response = await fetch(
       `${API_BASE}/api/conversations/${conversationId}/message/stream`,
       {
@@ -81,7 +113,7 @@ export const api = {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, images: images || [] }),
       }
     );
 

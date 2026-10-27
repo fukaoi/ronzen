@@ -1,21 +1,76 @@
 """3-stage LLM Council orchestration."""
 
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Optional, Tuple
 from .openrouter import query_models_parallel, query_model
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
 
 
-async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
+def build_user_content(
+    text: str,
+    images: Optional[List[str]] = None
+) -> Any:
+    """
+    Build the 'content' field of a user message, attaching images when present.
+
+    Args:
+        text: The text part of the message
+        images: Image data URLs to attach
+
+    Returns:
+        A plain string when there are no images, otherwise a list of content
+        parts in OpenRouter's multimodal format
+    """
+    if not images:
+        return text
+
+    parts: List[Dict[str, Any]] = [{"type": "text", "text": text}]
+    for image_url in images:
+        parts.append({
+            "type": "image_url",
+            "image_url": {"url": image_url}
+        })
+
+    return parts
+
+
+def build_messages(
+    prompt: str,
+    images: Optional[List[str]] = None,
+    history: Optional[List[Dict[str, Any]]] = None
+) -> List[Dict[str, Any]]:
+    """
+    Build the message list for a council query: prior turns, then this prompt.
+
+    Args:
+        prompt: The prompt for this turn
+        images: Image data URLs to attach to this turn
+        history: Earlier messages in the conversation, already formatted
+
+    Returns:
+        List of message dicts ready to send to OpenRouter
+    """
+    return list(history or []) + [
+        {"role": "user", "content": build_user_content(prompt, images)}
+    ]
+
+
+async def stage1_collect_responses(
+    user_query: str,
+    images: Optional[List[str]] = None,
+    history: Optional[List[Dict[str, Any]]] = None
+) -> List[Dict[str, Any]]:
     """
     Stage 1: Collect individual responses from all council models.
 
     Args:
         user_query: The user's question
+        images: Image data URLs attached to the question
+        history: Earlier messages in the conversation
 
     Returns:
         List of dicts with 'model' and 'response' keys
     """
-    messages = [{"role": "user", "content": user_query}]
+    messages = build_messages(user_query, images, history)
 
     # Query all models in parallel
     responses = await query_models_parallel(COUNCIL_MODELS, messages)
@@ -34,7 +89,9 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
 
 async def stage2_collect_rankings(
     user_query: str,
-    stage1_results: List[Dict[str, Any]]
+    stage1_results: List[Dict[str, Any]],
+    images: Optional[List[str]] = None,
+    history: Optional[List[Dict[str, Any]]] = None
 ) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
     """
     Stage 2: Each model ranks the anonymized responses.
@@ -42,6 +99,9 @@ async def stage2_collect_rankings(
     Args:
         user_query: The original user query
         stage1_results: Results from Stage 1
+        images: Image data URLs attached to the question, so evaluators can
+            judge whether each response describes the image correctly
+        history: Earlier messages in the conversation
 
     Returns:
         Tuple of (rankings list, label_to_model mapping)
@@ -61,9 +121,15 @@ async def stage2_collect_rankings(
         for label, result in zip(labels, stage1_results)
     ])
 
+    image_note = (
+        "\n\nThe question includes the image(s) attached to this message. "
+        "Take them into account when judging accuracy."
+        if images else ""
+    )
+
     ranking_prompt = f"""You are evaluating different responses to the following question:
 
-Question: {user_query}
+Question: {user_query}{image_note}
 
 Here are the responses from different models (anonymized):
 
@@ -92,7 +158,7 @@ FINAL RANKING:
 
 Now provide your evaluation and ranking:"""
 
-    messages = [{"role": "user", "content": ranking_prompt}]
+    messages = build_messages(ranking_prompt, images, history)
 
     # Get rankings from all council models in parallel
     responses = await query_models_parallel(COUNCIL_MODELS, messages)
@@ -115,7 +181,9 @@ Now provide your evaluation and ranking:"""
 async def stage3_synthesize_final(
     user_query: str,
     stage1_results: List[Dict[str, Any]],
-    stage2_results: List[Dict[str, Any]]
+    stage2_results: List[Dict[str, Any]],
+    images: Optional[List[str]] = None,
+    history: Optional[List[Dict[str, Any]]] = None
 ) -> Dict[str, Any]:
     """
     Stage 3: Chairman synthesizes final response.
@@ -124,6 +192,8 @@ async def stage3_synthesize_final(
         user_query: The original user query
         stage1_results: Individual model responses from Stage 1
         stage2_results: Rankings from Stage 2
+        images: Image data URLs attached to the question
+        history: Earlier messages in the conversation
 
     Returns:
         Dict with 'model' and 'response' keys
@@ -139,9 +209,14 @@ async def stage3_synthesize_final(
         for result in stage2_results
     ])
 
+    image_note = (
+        "\n(The image(s) the user attached are included with this message.)"
+        if images else ""
+    )
+
     chairman_prompt = f"""You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question, and then ranked each other's responses.
 
-Original Question: {user_query}
+Original Question: {user_query}{image_note}
 
 STAGE 1 - Individual Responses:
 {stage1_text}
@@ -156,7 +231,7 @@ Your task as Chairman is to synthesize all of this information into a single, co
 
 Provide a clear, well-reasoned final answer that represents the council's collective wisdom:"""
 
-    messages = [{"role": "user", "content": chairman_prompt}]
+    messages = build_messages(chairman_prompt, images, history)
 
     # Query the chairman model
     response = await query_model(CHAIRMAN_MODEL, messages)
@@ -265,6 +340,10 @@ async def generate_conversation_title(user_query: str) -> str:
     Returns:
         A short title (3-5 words)
     """
+    # An image-only message has no text to summarize
+    if not user_query.strip():
+        return "Image Discussion"
+
     title_prompt = f"""Generate a very short title (3-5 words maximum) that summarizes the following question.
 The title should be concise and descriptive. Do not use quotes or punctuation in the title.
 
@@ -293,18 +372,24 @@ Title:"""
     return title
 
 
-async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
+async def run_full_council(
+    user_query: str,
+    images: Optional[List[str]] = None,
+    history: Optional[List[Dict[str, Any]]] = None
+) -> Tuple[List, List, Dict, Dict]:
     """
     Run the complete 3-stage council process.
 
     Args:
         user_query: The user's question
+        images: Image data URLs attached to the question
+        history: Earlier messages in the conversation
 
     Returns:
         Tuple of (stage1_results, stage2_results, stage3_result, metadata)
     """
     # Stage 1: Collect individual responses
-    stage1_results = await stage1_collect_responses(user_query)
+    stage1_results = await stage1_collect_responses(user_query, images, history)
 
     # If no models responded successfully, return error
     if not stage1_results:
@@ -314,7 +399,9 @@ async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
         }, {}
 
     # Stage 2: Collect rankings
-    stage2_results, label_to_model = await stage2_collect_rankings(user_query, stage1_results)
+    stage2_results, label_to_model = await stage2_collect_rankings(
+        user_query, stage1_results, images, history
+    )
 
     # Calculate aggregate rankings
     aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
@@ -323,7 +410,9 @@ async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
     stage3_result = await stage3_synthesize_final(
         user_query,
         stage1_results,
-        stage2_results
+        stage2_results,
+        images,
+        history
     )
 
     # Prepare metadata
