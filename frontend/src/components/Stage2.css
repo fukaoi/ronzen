@@ -1,12 +1,9 @@
-.stage2 {
-  background: #fafafa;
-}
-
 .stage2 h4 {
-  margin: 20px 0 8px 0;
-  color: #333;
-  font-size: 14px;
+  margin: 24px 0 8px 0;
+  color: var(--text);
+  font-size: 13px;
   font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
 .stage2 h4:first-of-type {
@@ -14,140 +11,128 @@
 }
 
 .stage-description {
-  margin: 0 0 12px 0;
-  color: #666;
-  font-size: 13px;
-  line-height: 1.5;
+  margin: 0 0 16px 0;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.6;
 }
 
+.stage2 .tab-content {
+  margin-bottom: 24px;
+}
+
+.ranking-model {
+  color: var(--text-faint);
+  font-size: 11px;
+  font-family: 'SFMono-Regular', Menlo, Consolas, monospace;
+  letter-spacing: 0.5px;
+  margin-bottom: 14px;
+}
+
+.ranking-content {
+  color: var(--text);
+  line-height: 1.7;
+  font-size: 14px;
+  padding: 0;
+}
+
+.parsed-ranking {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--shadow-dark);
+}
+
+.parsed-ranking strong {
+  color: var(--accent);
+  font-size: 12px;
+  letter-spacing: 0.3px;
+}
+
+.parsed-ranking ol {
+  margin: 10px 0 0 0;
+  padding-left: 24px;
+  color: var(--text);
+}
+
+.parsed-ranking li {
+  margin: 5px 0;
+  font-family: 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 12.5px;
+}
+
+/* --- Aggregate rankings --- */
+
 .aggregate-rankings {
-  background: #f0f7ff;
-  padding: 16px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  border: 2px solid #d0e7ff;
+  background: var(--bg);
+  padding: 22px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--nm-inset-sm);
+  margin-bottom: 24px;
 }
 
 .aggregate-rankings h4 {
-  margin: 0 0 12px 0;
-  color: #2a7ae2;
-  font-size: 15px;
+  margin: 0 0 6px 0;
+  color: var(--accent);
+  font-size: 14px;
 }
 
 .aggregate-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .aggregate-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px;
-  background: #ffffff;
-  border-radius: 6px;
-  border: 1px solid #d0e7ff;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--nm-raised-sm);
 }
 
 .rank-position {
-  color: #2a7ae2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--bg);
+  box-shadow: var(--nm-inset-sm);
+  color: var(--text-muted);
   font-weight: 700;
-  font-size: 16px;
-  min-width: 35px;
+  font-size: 12px;
+}
+
+/* The winner of the peer vote gets the accent treatment */
+.aggregate-item:first-child .rank-position {
+  background: var(--accent);
+  box-shadow: var(--nm-accent);
+  color: #fff;
 }
 
 .rank-model {
   flex: 1;
-  color: #333;
-  font-family: monospace;
-  font-size: 14px;
+  min-width: 0;
+  color: var(--text);
+  font-family: 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 13px;
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .rank-score {
-  color: #666;
-  font-size: 13px;
-  font-family: monospace;
-}
-
-.stage2 .tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.stage2 .tab {
-  padding: 8px 16px;
-  background: #ffffff;
-  border: 1px solid #d0d0d0;
-  border-radius: 6px 6px 0 0;
-  color: #666;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.stage2 .tab:hover {
-  background: #f0f0f0;
-  color: #333;
-  border-color: #4a90e2;
-}
-
-.stage2 .tab.active {
-  background: #ffffff;
-  color: #4a90e2;
-  border-color: #4a90e2;
-  border-bottom-color: #ffffff;
-  font-weight: 600;
-}
-
-.stage2 .tab-content {
-  background: #ffffff;
-  padding: 16px;
-  border-radius: 6px;
-  border: 1px solid #e0e0e0;
-  margin-bottom: 20px;
-}
-
-.ranking-model {
-  color: #888;
+  color: var(--text-muted);
   font-size: 12px;
-  font-family: monospace;
-  margin-bottom: 12px;
-}
-
-.ranking-content {
-  color: #333;
-  line-height: 1.6;
-  font-size: 14px;
-}
-
-.parsed-ranking {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 2px solid #e0e0e0;
-}
-
-.parsed-ranking strong {
-  color: #2a7ae2;
-  font-size: 13px;
-}
-
-.parsed-ranking ol {
-  margin: 8px 0 0 0;
-  padding-left: 24px;
-  color: #333;
-}
-
-.parsed-ranking li {
-  margin: 4px 0;
-  font-family: monospace;
-  font-size: 13px;
+  font-family: 'SFMono-Regular', Menlo, Consolas, monospace;
 }
 
 .rank-count {
-  color: #999;
-  font-size: 12px;
+  color: var(--text-faint);
+  font-size: 11px;
 }

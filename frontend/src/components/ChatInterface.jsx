@@ -282,13 +282,26 @@ export default function ChatInterface({
             className="attach-button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading || isUploading}
-            title="Attach images"
+            title="Attach images (you can also drop or paste them)"
           >
-            🖼️
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="3" y="3" width="18" height="18" rx="4" />
+              <circle cx="8.5" cy="9" r="1.6" />
+              <path d="M21 15.5 16 10.5 5.5 21" />
+            </svg>
           </button>
           <textarea
             className="message-input"
-            placeholder="Ask your question... (Shift+Enter for new line, Enter to send. Drop or paste images to discuss them)"
+            placeholder="Ask your question...  ·  Enter to send, Shift+Enter for a new line"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}

@@ -79,7 +79,7 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
           <div className="aggregate-list">
             {aggregateRankings.map((agg, index) => (
               <div key={index} className="aggregate-item">
-                <span className="rank-position">#{index + 1}</span>
+                <span className="rank-position">{index + 1}</span>
                 <span className="rank-model">
                   {agg.model.split('/')[1] || agg.model}
                 </span>
