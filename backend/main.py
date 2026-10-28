@@ -1,31 +1,85 @@
 """FastAPI backend for LLM Council."""
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Deque
+from collections import defaultdict, deque
+from pathlib import Path
 import os
+import time
 import uuid
 import json
 import asyncio
 
 from . import storage
+from .config import (
+    HOST,
+    PORT,
+    EXTRA_ALLOWED_ORIGINS,
+    RATE_LIMIT_PER_MINUTE,
+)
 from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings, build_user_content
 
 app = FastAPI(title="LLM Council API")
 
-# Enable CORS for local development.
-# Any loopback origin is allowed because Vite falls back to another port
-# (5174, 5175, ...) whenever 5173 is already taken, and a hard-coded list
-# would turn that into an opaque CORS preflight failure.
+# CORS.
+#
+# Any loopback origin is allowed for local development, because Vite falls back
+# to another port (5174, 5175, ...) whenever 5173 is already taken, and a
+# hard-coded list would turn that into an opaque preflight failure.
+#
+# In production the built frontend is served from this same app (see the mount
+# at the bottom of this file), so the browser never makes a cross-origin
+# request and nothing extra is needed. ALLOWED_ORIGINS only matters if the
+# frontend is hosted somewhere else.
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=EXTRA_ALLOWED_ORIGINS,
     allow_origin_regex=r"http://(localhost|127\.0\.0\.1|\[::1\]):\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Recent council runs per client, for the rate limit below
+_recent_runs: Dict[str, Deque[float]] = defaultdict(deque)
+
+
+def enforce_rate_limit(request: Request):
+    """
+    Throttle council runs.
+
+    Every run fans out to each council model twice plus the chairman, so an
+    unattended client in a retry loop burns through OpenRouter credits fast.
+    Access puts an authenticated identity in front of this, so prefer that as
+    the key and fall back to the peer address.
+    """
+    if RATE_LIMIT_PER_MINUTE <= 0:
+        return
+
+    client = (
+        request.headers.get("cf-access-authenticated-user-email")
+        or (request.client.host if request.client else "unknown")
+    )
+
+    now = time.monotonic()
+    runs = _recent_runs[client]
+    while runs and now - runs[0] > 60:
+        runs.popleft()
+
+    if len(runs) >= RATE_LIMIT_PER_MINUTE:
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Rate limit reached ({RATE_LIMIT_PER_MINUTE} messages per "
+                "minute). Please wait a moment."
+            ),
+        )
+
+    runs.append(now)
 
 
 class CreateConversationRequest(BaseModel):
@@ -116,8 +170,8 @@ def validate_message_request(request: SendMessageRequest):
         )
 
 
-@app.get("/")
-async def root():
+@app.get("/api/health")
+async def health():
     """Health check endpoint."""
     return {"status": "ok", "service": "LLM Council API"}
 
@@ -171,7 +225,10 @@ async def get_conversation(conversation_id: str):
     return conversation
 
 
-@app.post("/api/conversations/{conversation_id}/message")
+@app.post(
+    "/api/conversations/{conversation_id}/message",
+    dependencies=[Depends(enforce_rate_limit)],
+)
 async def send_message(conversation_id: str, request: SendMessageRequest):
     """
     Send a message and run the 3-stage council process.
@@ -223,7 +280,10 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
     }
 
 
-@app.post("/api/conversations/{conversation_id}/message/stream")
+@app.post(
+    "/api/conversations/{conversation_id}/message/stream",
+    dependencies=[Depends(enforce_rate_limit)],
+)
 async def send_message_stream(conversation_id: str, request: SendMessageRequest):
     """
     Send a message and stream the 3-stage council process.
@@ -296,10 +356,24 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
+            # Tell intermediate proxies (cloudflared, nginx) to pass each
+            # stage through as it is produced instead of buffering the stream
+            "X-Accel-Buffering": "no",
         }
     )
 
 
+# Serve the built frontend from this same app, when it has been built.
+#
+# One origin for the page and the API means one Cloudflare Tunnel hostname and
+# one Access policy covering everything, and the Access session cookie is sent
+# with every API call automatically. This mount must stay last: it claims "/",
+# so every real route above it has to be registered first.
+FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if FRONTEND_DIST.is_dir():
+    app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host=HOST, port=PORT)
