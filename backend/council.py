@@ -7,19 +7,29 @@ from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
 
 def build_user_content(
     text: str,
-    images: Optional[List[str]] = None
+    images: Optional[List[str]] = None,
+    files: Optional[List[Dict[str, str]]] = None
 ) -> Any:
     """
-    Build the 'content' field of a user message, attaching images when present.
+    Build the 'content' field of a user message, attaching what came with it.
+
+    Images travel as native image parts. Text files have no equivalent, so
+    they are inlined ahead of the user's own words: the file is the context
+    and the question is what the model should act on, so the question reads
+    last.
 
     Args:
         text: The text part of the message
         images: Image data URLs to attach
+        files: Text attachments, each a dict with 'name' and 'content'
 
     Returns:
         A plain string when there are no images, otherwise a list of content
         parts in OpenRouter's multimodal format
     """
+    if files:
+        text = f"{format_attached_files(files)}\n\n{text}" if text else format_attached_files(files)
+
     if not images:
         return text
 
@@ -33,10 +43,31 @@ def build_user_content(
     return parts
 
 
+def format_attached_files(files: List[Dict[str, str]]) -> str:
+    """
+    Render text attachments as a block to put in front of the prompt.
+
+    XML-ish tags rather than fenced code blocks: attachments are often
+    Markdown, and a file containing ``` of its own would break out of a fence.
+
+    Args:
+        files: Dicts with 'name' and 'content'
+
+    Returns:
+        The attachments as one string
+    """
+    blocks = "\n".join(
+        f'<file name="{f["name"]}">\n{f["content"]}\n</file>'
+        for f in files
+    )
+    return f"<attached_files>\n{blocks}\n</attached_files>"
+
+
 def build_messages(
     prompt: str,
     images: Optional[List[str]] = None,
-    history: Optional[List[Dict[str, Any]]] = None
+    history: Optional[List[Dict[str, Any]]] = None,
+    files: Optional[List[Dict[str, str]]] = None
 ) -> List[Dict[str, Any]]:
     """
     Build the message list for a council query: prior turns, then this prompt.
@@ -45,19 +76,21 @@ def build_messages(
         prompt: The prompt for this turn
         images: Image data URLs to attach to this turn
         history: Earlier messages in the conversation, already formatted
+        files: Text attachments for this turn
 
     Returns:
         List of message dicts ready to send to OpenRouter
     """
     return list(history or []) + [
-        {"role": "user", "content": build_user_content(prompt, images)}
+        {"role": "user", "content": build_user_content(prompt, images, files)}
     ]
 
 
 async def stage1_collect_responses(
     user_query: str,
     images: Optional[List[str]] = None,
-    history: Optional[List[Dict[str, Any]]] = None
+    history: Optional[List[Dict[str, Any]]] = None,
+    files: Optional[List[Dict[str, str]]] = None
 ) -> List[Dict[str, Any]]:
     """
     Stage 1: Collect individual responses from all council models.
@@ -66,11 +99,12 @@ async def stage1_collect_responses(
         user_query: The user's question
         images: Image data URLs attached to the question
         history: Earlier messages in the conversation
+        files: Text attachments for the question
 
     Returns:
         List of dicts with 'model' and 'response' keys
     """
-    messages = build_messages(user_query, images, history)
+    messages = build_messages(user_query, images, history, files)
 
     # Query all models in parallel
     responses = await query_models_parallel(COUNCIL_MODELS, messages)
@@ -91,7 +125,8 @@ async def stage2_collect_rankings(
     user_query: str,
     stage1_results: List[Dict[str, Any]],
     images: Optional[List[str]] = None,
-    history: Optional[List[Dict[str, Any]]] = None
+    history: Optional[List[Dict[str, Any]]] = None,
+    files: Optional[List[Dict[str, str]]] = None
 ) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
     """
     Stage 2: Each model ranks the anonymized responses.
@@ -102,6 +137,7 @@ async def stage2_collect_rankings(
         images: Image data URLs attached to the question, so evaluators can
             judge whether each response describes the image correctly
         history: Earlier messages in the conversation
+        files: Text attachments, included for the same reason as images
 
     Returns:
         Tuple of (rankings list, label_to_model mapping)
@@ -121,15 +157,15 @@ async def stage2_collect_rankings(
         for label, result in zip(labels, stage1_results)
     ])
 
-    image_note = (
-        "\n\nThe question includes the image(s) attached to this message. "
+    attachment_note = (
+        "\n\nThe question's attachments are included with this message. "
         "Take them into account when judging accuracy."
-        if images else ""
+        if (images or files) else ""
     )
 
     ranking_prompt = f"""You are evaluating different responses to the following question:
 
-Question: {user_query}{image_note}
+Question: {user_query}{attachment_note}
 
 Here are the responses from different models (anonymized):
 
@@ -158,7 +194,7 @@ FINAL RANKING:
 
 Now provide your evaluation and ranking:"""
 
-    messages = build_messages(ranking_prompt, images, history)
+    messages = build_messages(ranking_prompt, images, history, files)
 
     # Get rankings from all council models in parallel
     responses = await query_models_parallel(COUNCIL_MODELS, messages)
@@ -183,7 +219,8 @@ async def stage3_synthesize_final(
     stage1_results: List[Dict[str, Any]],
     stage2_results: List[Dict[str, Any]],
     images: Optional[List[str]] = None,
-    history: Optional[List[Dict[str, Any]]] = None
+    history: Optional[List[Dict[str, Any]]] = None,
+    files: Optional[List[Dict[str, str]]] = None
 ) -> Dict[str, Any]:
     """
     Stage 3: Chairman synthesizes final response.
@@ -194,6 +231,7 @@ async def stage3_synthesize_final(
         stage2_results: Rankings from Stage 2
         images: Image data URLs attached to the question
         history: Earlier messages in the conversation
+        files: Text attachments for the question
 
     Returns:
         Dict with 'model' and 'response' keys
@@ -209,14 +247,14 @@ async def stage3_synthesize_final(
         for result in stage2_results
     ])
 
-    image_note = (
-        "\n(The image(s) the user attached are included with this message.)"
-        if images else ""
+    attachment_note = (
+        "\n(The files the user attached are included with this message.)"
+        if (images or files) else ""
     )
 
     chairman_prompt = f"""You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question, and then ranked each other's responses.
 
-Original Question: {user_query}{image_note}
+Original Question: {user_query}{attachment_note}
 
 STAGE 1 - Individual Responses:
 {stage1_text}
@@ -231,7 +269,7 @@ Your task as Chairman is to synthesize all of this information into a single, co
 
 Provide a clear, well-reasoned final answer that represents the council's collective wisdom:"""
 
-    messages = build_messages(chairman_prompt, images, history)
+    messages = build_messages(chairman_prompt, images, history, files)
 
     # Query the chairman model
     response = await query_model(CHAIRMAN_MODEL, messages)
@@ -330,19 +368,24 @@ def calculate_aggregate_rankings(
     return aggregate
 
 
-async def generate_conversation_title(user_query: str) -> str:
+async def generate_conversation_title(
+    user_query: str,
+    fallback_title: str = ""
+) -> str:
     """
     Generate a short title for a conversation based on the first user message.
 
     Args:
         user_query: The first user message
+        fallback_title: Used when the message is attachments only, e.g. the
+            name of the first attached file
 
     Returns:
         A short title (3-5 words)
     """
-    # An image-only message has no text to summarize
+    # An attachment-only message has no text to summarize
     if not user_query.strip():
-        return "Image Discussion"
+        return fallback_title or "Attachment Discussion"
 
     title_prompt = f"""Generate a very short title (3-5 words maximum) that summarizes the following question.
 The title should be concise and descriptive. Do not use quotes or punctuation in the title.
@@ -375,7 +418,8 @@ Title:"""
 async def run_full_council(
     user_query: str,
     images: Optional[List[str]] = None,
-    history: Optional[List[Dict[str, Any]]] = None
+    history: Optional[List[Dict[str, Any]]] = None,
+    files: Optional[List[Dict[str, str]]] = None
 ) -> Tuple[List, List, Dict, Dict]:
     """
     Run the complete 3-stage council process.
@@ -384,12 +428,13 @@ async def run_full_council(
         user_query: The user's question
         images: Image data URLs attached to the question
         history: Earlier messages in the conversation
+        files: Text attachments for the question
 
     Returns:
         Tuple of (stage1_results, stage2_results, stage3_result, metadata)
     """
     # Stage 1: Collect individual responses
-    stage1_results = await stage1_collect_responses(user_query, images, history)
+    stage1_results = await stage1_collect_responses(user_query, images, history, files)
 
     # If no models responded successfully, return error
     if not stage1_results:
@@ -400,7 +445,7 @@ async def run_full_council(
 
     # Stage 2: Collect rankings
     stage2_results, label_to_model = await stage2_collect_rankings(
-        user_query, stage1_results, images, history
+        user_query, stage1_results, images, history, files
     )
 
     # Calculate aggregate rankings
@@ -412,7 +457,8 @@ async def run_full_council(
         stage1_results,
         stage2_results,
         images,
-        history
+        history,
+        files
     )
 
     # Prepare metadata

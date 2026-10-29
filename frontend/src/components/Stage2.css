@@ -43,7 +43,7 @@
 }
 
 .parsed-ranking strong {
-  color: var(--accent);
+  color: var(--stage2-color);
   font-size: 12px;
   letter-spacing: 0.3px;
 }
@@ -63,7 +63,11 @@
 /* --- Aggregate rankings --- */
 
 .aggregate-rankings {
-  background: var(--bg);
+  background: linear-gradient(
+    135deg,
+    rgba(242, 163, 12, 0.07),
+    rgba(244, 84, 111, 0.05)
+  );
   padding: 22px;
   border-radius: var(--radius-md);
   box-shadow: var(--nm-inset-sm);
@@ -72,7 +76,7 @@
 
 .aggregate-rankings h4 {
   margin: 0 0 6px 0;
-  color: var(--accent);
+  color: #b8790a;
   font-size: 14px;
 }
 
@@ -107,11 +111,31 @@
   font-size: 12px;
 }
 
-/* The winner of the peer vote gets the accent treatment */
-.aggregate-item:first-child .rank-position {
-  background: var(--accent);
-  box-shadow: var(--nm-accent);
-  color: #fff;
+/* Medals for the top three of the peer vote */
+.aggregate-item:nth-child(1) .rank-position {
+  background: linear-gradient(140deg, #ffd96a, #e9a007);
+  box-shadow: 3px 4px 11px rgba(214, 150, 10, 0.5),
+    -3px -3px 7px var(--shadow-light);
+  color: #6b4400;
+}
+
+.aggregate-item:nth-child(2) .rank-position {
+  background: linear-gradient(140deg, #eef1fb, #b4bcd6);
+  box-shadow: 3px 4px 11px rgba(139, 148, 178, 0.45),
+    -3px -3px 7px var(--shadow-light);
+  color: #4a5068;
+}
+
+.aggregate-item:nth-child(3) .rank-position {
+  background: linear-gradient(140deg, #f3b98f, #c87a43);
+  box-shadow: 3px 4px 11px rgba(186, 110, 55, 0.42),
+    -3px -3px 7px var(--shadow-light);
+  color: #5d2f0d;
+}
+
+.aggregate-item:nth-child(1) .rank-model {
+  color: #8a5c00;
+  font-weight: 700;
 }
 
 .rank-model {

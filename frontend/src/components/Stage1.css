@@ -1,12 +1,27 @@
 /* Shared surface for all three stages */
 
 .stage {
+  position: relative;
   margin: 20px 0;
   padding: 26px;
   background: var(--bg);
   border-radius: var(--radius-lg);
   box-shadow: var(--nm-raised);
+  overflow: hidden;
 }
+
+/* A band in the stage's own colour across the top of the card */
+.stage::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: var(--stage-color, var(--accent));
+}
+
+.stage1 { --stage-color: var(--stage1-color); }
+.stage2 { --stage-color: var(--stage2-color); }
+.stage3 { --stage-color: var(--stage3-color); }
 
 .stage-title {
   display: flex;
@@ -19,7 +34,7 @@
   letter-spacing: 0.2px;
 }
 
-/* Step badge, numbered per stage */
+/* Step badge, numbered and tinted per stage */
 .stage-title::before {
   display: flex;
   align-items: center;
@@ -28,9 +43,10 @@
   height: 30px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: var(--bg);
-  box-shadow: var(--nm-raised-sm);
-  color: var(--accent);
+  background: var(--stage-color, var(--accent));
+  box-shadow: 3px 4px 10px color-mix(in srgb, var(--stage-color) 45%, transparent),
+    -3px -3px 7px var(--shadow-light);
+  color: #fff;
   font-size: 13px;
   font-weight: 700;
 }
@@ -57,6 +73,9 @@
 }
 
 .tab {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   padding: 10px 20px;
   background: var(--bg);
   border: none;
@@ -70,13 +89,31 @@
   transition: box-shadow var(--ease), color var(--ease);
 }
 
+/* Each council member keeps the same colour across both tab strips,
+   since the models are listed in the same order in stage 1 and stage 2 */
+.tab::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--model-color, var(--accent));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--model-color) 22%, transparent);
+}
+
+.tab:nth-child(6n + 1) { --model-color: var(--c-violet); }
+.tab:nth-child(6n + 2) { --model-color: var(--c-teal); }
+.tab:nth-child(6n + 3) { --model-color: var(--c-orange); }
+.tab:nth-child(6n + 4) { --model-color: var(--c-blue); }
+.tab:nth-child(6n + 5) { --model-color: var(--c-pink); }
+.tab:nth-child(6n + 6) { --model-color: var(--c-lime); }
+
 .tab:hover {
   color: var(--text);
   box-shadow: var(--nm-raised);
 }
 
 .tab.active {
-  color: var(--accent);
+  color: var(--model-color, var(--accent));
   box-shadow: var(--nm-inset);
   font-weight: 600;
 }
@@ -91,9 +128,14 @@
 }
 
 .model-name {
-  color: var(--text-faint);
-  font-size: 11px;
+  display: inline-block;
   margin-bottom: 14px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--bg);
+  box-shadow: var(--nm-raised-sm);
+  color: var(--text-muted);
+  font-size: 11px;
   font-family: 'SFMono-Regular', Menlo, Consolas, monospace;
   letter-spacing: 0.5px;
 }

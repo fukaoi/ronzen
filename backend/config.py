@@ -22,6 +22,17 @@ UPLOAD_DIR = "data/uploads"
 # Maximum size of a single uploaded image (bytes)
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 
+# Maximum size of a single uploaded text file (bytes).
+# Text attachments are inlined into the prompt, and every council run sends
+# that prompt to each council model twice plus the chairman, so the file's
+# token cost is multiplied sevenfold. Keep this modest.
+MAX_TEXT_BYTES = int(os.getenv("MAX_TEXT_BYTES", str(256 * 1024)))
+
+# Maximum combined size of the text files attached to one message (bytes)
+MAX_TEXT_BYTES_PER_MESSAGE = int(
+    os.getenv("MAX_TEXT_BYTES_PER_MESSAGE", str(1024 * 1024))
+)
+
 # --- Server / network ---
 
 # Bind address. Loopback by default: when the app is published through a
@@ -46,10 +57,10 @@ RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "10"))
 
 COUNCIL_MODELS = [
     "~openai/gpt-astra-latest",
-    "anthropic/claude-opus-5",
-    "~google/gemini-pro-latest",
+    "anthropic/claude-opus-5.5",
+    "google/gemini-4-argon",
 ]
-CHAIRMAN_MODEL = "~google/gemini-pro-latest"
+CHAIRMAN_MODEL = "qwen/qwen3.8-max-0902"
 
 
 # コスト削減構成

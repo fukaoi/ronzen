@@ -4,6 +4,7 @@ import './Sidebar.css';
 export default function Sidebar({
   conversations,
   currentConversationId,
+  streamingId,
   onSelectConversation,
   onNewConversation,
 }) {
@@ -32,7 +33,14 @@ export default function Sidebar({
                 {conv.title || 'New Conversation'}
               </div>
               <div className="conversation-meta">
-                {conv.message_count} messages
+                {conv.id === streamingId ? (
+                  <span className="conversation-running">
+                    <span className="running-dot"></span>
+                    Consulting the council...
+                  </span>
+                ) : (
+                  `${conv.message_count} messages`
+                )}
               </div>
             </div>
           ))

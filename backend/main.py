@@ -20,6 +20,7 @@ from .config import (
     PORT,
     EXTRA_ALLOWED_ORIGINS,
     RATE_LIMIT_PER_MINUTE,
+    MAX_TEXT_BYTES_PER_MESSAGE,
 )
 from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings, build_user_content
 
@@ -91,16 +92,26 @@ class SendMessageRequest(BaseModel):
     """Request to send a message in a conversation."""
     content: str = ""
     images: List[str] = []
+    files: List[str] = []
 
 
-class UploadImagesRequest(BaseModel):
-    """Request to upload images as base64 data URLs."""
-    images: List[str]
+class UploadItem(BaseModel):
+    """One file being uploaded, as a base64 data URL."""
+    data_url: str
+    name: str = ""
 
 
-class UploadedImage(BaseModel):
-    """An image that has been stored on the server."""
+class UploadRequest(BaseModel):
+    """Request to upload one or more attachments."""
+    files: List[UploadItem]
+
+
+class UploadedFile(BaseModel):
+    """An attachment that has been stored on the server."""
     filename: str
+    name: str
+    kind: str
+    size: int
     url: str
 
 
@@ -134,21 +145,72 @@ def resolve_images(filenames: List[str]) -> List[str]:
     return resolved
 
 
+def resolve_files(filenames: List[str]) -> List[Dict[str, str]]:
+    """
+    Read stored text attachments back for inlining into the prompt.
+
+    Missing or no longer readable files are skipped, so a lost upload never
+    breaks the conversation. The combined size is capped: each attachment is
+    sent to every council model twice plus the chairman.
+    """
+    resolved: List[Dict[str, str]] = []
+    total = 0
+
+    for filename in filenames:
+        content = storage.read_text_file(filename)
+        if content is None:
+            continue
+
+        total += len(content.encode('utf-8'))
+        if total > MAX_TEXT_BYTES_PER_MESSAGE:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Attached files are too large in total "
+                    f"(limit is {MAX_TEXT_BYTES_PER_MESSAGE} bytes)"
+                ),
+            )
+
+        resolved.append({
+            "name": storage.display_name(filename),
+            "content": content,
+        })
+
+    return resolved
+
+
+def attachment_title(files: List[Dict[str, str]]) -> str:
+    """Name a conversation after its first attachment, when there is no text."""
+    return files[0]["name"] if files else ""
+
+
+def message_attachments(message: Dict[str, Any]) -> List[str]:
+    """Stored filenames of the text attachments on a saved user message."""
+    return [
+        entry["filename"]
+        for entry in message.get("files", [])
+        if isinstance(entry, dict) and entry.get("filename")
+    ]
+
+
 def build_history_messages(conversation: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Build the prior turns of a conversation as OpenRouter messages.
 
-    User turns keep their attached images; assistant turns are represented by
-    the chairman's final answer, which is what the user actually replied to.
+    User turns keep what was attached to them; assistant turns are represented
+    by the chairman's final answer, which is what the user actually replied to.
     """
     history: List[Dict[str, Any]] = []
 
     for message in conversation.get("messages", []):
         if message.get("role") == "user":
             images = resolve_images(message.get("images", []))
+            files = resolve_files(message_attachments(message))
             history.append({
                 "role": "user",
-                "content": build_user_content(message.get("content", ""), images)
+                "content": build_user_content(
+                    message.get("content", ""), images, files
+                )
             })
         elif message.get("role") == "assistant":
             final_response = (message.get("stage3") or {}).get("response")
@@ -162,11 +224,11 @@ def build_history_messages(conversation: Dict[str, Any]) -> List[Dict[str, Any]]
 
 
 def validate_message_request(request: SendMessageRequest):
-    """Reject a message that has neither text nor images."""
-    if not request.content.strip() and not request.images:
+    """Reject a message that has neither text nor attachments."""
+    if not request.content.strip() and not request.images and not request.files:
         raise HTTPException(
             status_code=400,
-            detail="A message must have text or at least one image"
+            detail="A message must have text or at least one attachment"
         )
 
 
@@ -176,18 +238,26 @@ async def health():
     return {"status": "ok", "service": "LLM Council API"}
 
 
-@app.post("/api/uploads", response_model=List[UploadedImage])
-async def upload_images(request: UploadImagesRequest):
-    """Store base64 data URL images and return the URLs to reference them by."""
+@app.post("/api/uploads", response_model=List[UploadedFile])
+async def upload_files(request: UploadRequest):
+    """
+    Store attachments and return the handles to reference them by.
+
+    Images are kept as images; anything else has to be readable as UTF-8 text,
+    because text attachments reach the models inlined in the prompt.
+    """
     uploaded = []
-    for data_url in request.images:
+    for item in request.files:
         try:
-            saved = storage.save_image_from_data_url(data_url)
+            saved = storage.save_upload_from_data_url(item.data_url, item.name)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         uploaded.append({
             "filename": saved["filename"],
-            "url": f"/api/uploads/{saved['filename']}"
+            "name": saved["name"],
+            "kind": saved["kind"],
+            "size": saved["size"],
+            "url": f"/api/uploads/{saved['filename']}",
         })
 
     return uploaded
@@ -195,11 +265,26 @@ async def upload_images(request: UploadImagesRequest):
 
 @app.get("/api/uploads/{filename}")
 async def get_upload(filename: str):
-    """Serve an uploaded image."""
+    """
+    Serve an uploaded attachment.
+
+    Images render inline; everything else is sent as a download, so an
+    uploaded .html or .svg can never run as a page on this origin.
+    """
     path = storage.get_upload_path(filename)
     if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Image not found")
-    return FileResponse(path)
+        raise HTTPException(status_code=404, detail="Attachment not found")
+
+    extension = os.path.splitext(path)[1].lower()
+    if extension in storage.EXTENSION_TO_MIME:
+        return FileResponse(path)
+
+    return FileResponse(
+        path,
+        media_type="text/plain; charset=utf-8",
+        filename=storage.display_name(filename),
+        content_disposition_type="attachment",
+    )
 
 
 @app.get("/api/conversations", response_model=List[ConversationMetadata])
@@ -247,20 +332,26 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
     # Capture the earlier turns before this message is appended
     history = build_history_messages(conversation)
     images = resolve_images(request.images)
+    files = resolve_files(request.files)
 
     # Add user message
-    storage.add_user_message(conversation_id, request.content, request.images)
+    storage.add_user_message(
+        conversation_id, request.content, request.images, request.files
+    )
 
     # If this is the first message, generate a title
     if is_first_message:
-        title = await generate_conversation_title(request.content)
+        title = await generate_conversation_title(
+            request.content, attachment_title(files)
+        )
         storage.update_conversation_title(conversation_id, title)
 
     # Run the 3-stage council process
     stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
         request.content,
         images,
-        history
+        history,
+        files
     )
 
     # Add assistant message with all stages
@@ -302,31 +393,38 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
     # Capture the earlier turns before this message is appended
     history = build_history_messages(conversation)
     images = resolve_images(request.images)
+    files = resolve_files(request.files)
 
     async def event_generator():
         try:
             # Add user message
-            storage.add_user_message(conversation_id, request.content, request.images)
+            storage.add_user_message(
+                conversation_id, request.content, request.images, request.files
+            )
 
             # Start title generation in parallel (don't await yet)
             title_task = None
             if is_first_message:
-                title_task = asyncio.create_task(generate_conversation_title(request.content))
+                title_task = asyncio.create_task(
+                    generate_conversation_title(
+                        request.content, attachment_title(files)
+                    )
+                )
 
             # Stage 1: Collect responses
             yield f"data: {json.dumps({'type': 'stage1_start'})}\n\n"
-            stage1_results = await stage1_collect_responses(request.content, images, history)
+            stage1_results = await stage1_collect_responses(request.content, images, history, files)
             yield f"data: {json.dumps({'type': 'stage1_complete', 'data': stage1_results})}\n\n"
 
             # Stage 2: Collect rankings
             yield f"data: {json.dumps({'type': 'stage2_start'})}\n\n"
-            stage2_results, label_to_model = await stage2_collect_rankings(request.content, stage1_results, images, history)
+            stage2_results, label_to_model = await stage2_collect_rankings(request.content, stage1_results, images, history, files)
             aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
             yield f"data: {json.dumps({'type': 'stage2_complete', 'data': stage2_results, 'metadata': {'label_to_model': label_to_model, 'aggregate_rankings': aggregate_rankings}})}\n\n"
 
             # Stage 3: Synthesize final answer
             yield f"data: {json.dumps({'type': 'stage3_start'})}\n\n"
-            stage3_result = await stage3_synthesize_final(request.content, stage1_results, stage2_results, images, history)
+            stage3_result = await stage3_synthesize_final(request.content, stage1_results, stage2_results, images, history, files)
             yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_result})}\n\n"
 
             # Wait for title generation if it was started

@@ -18,10 +18,38 @@ function readFileAsDataUrl(file) {
   });
 }
 
+/**
+ * Human-readable size for an attachment chip.
+ */
+function formatSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function FileIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M14 3v5h5" />
+      <path d="M14.5 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7.5z" />
+    </svg>
+  );
+}
+
 export default function ChatInterface({
   conversation,
   onSendMessage,
   isLoading,
+  busyElsewhere = false,
 }) {
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState([]);
@@ -46,20 +74,23 @@ export default function ChatInterface({
     setUploadError(null);
   }, [conversation?.id]);
 
-  const addFiles = async (files) => {
-    const imageFiles = Array.from(files).filter((file) =>
-      file.type.startsWith('image/')
-    );
-    if (imageFiles.length === 0) return;
+  const addFiles = async (fileList) => {
+    const picked = Array.from(fileList);
+    if (picked.length === 0) return;
 
     setIsUploading(true);
     setUploadError(null);
     try {
-      const dataUrls = await Promise.all(imageFiles.map(readFileAsDataUrl));
-      const uploaded = await api.uploadImages(dataUrls);
+      const items = await Promise.all(
+        picked.map(async (file) => ({
+          data_url: await readFileAsDataUrl(file),
+          name: file.name,
+        }))
+      );
+      const uploaded = await api.uploadFiles(items);
       setAttachments((prev) => [...prev, ...uploaded]);
     } catch (error) {
-      console.error('Failed to upload images:', error);
+      console.error('Failed to upload attachments:', error);
       setUploadError(error.message);
     } finally {
       setIsUploading(false);
@@ -74,13 +105,8 @@ export default function ChatInterface({
 
   const handlePaste = (e) => {
     if (e.clipboardData?.files?.length) {
-      const hasImage = Array.from(e.clipboardData.files).some((file) =>
-        file.type.startsWith('image/')
-      );
-      if (hasImage) {
-        e.preventDefault();
-        addFiles(e.clipboardData.files);
-      }
+      e.preventDefault();
+      addFiles(e.clipboardData.files);
     }
   };
 
@@ -103,11 +129,21 @@ export default function ChatInterface({
   };
 
   const removeAttachment = (filename) => {
-    setAttachments((prev) => prev.filter((img) => img.filename !== filename));
+    setAttachments((prev) =>
+      prev.filter((attachment) => attachment.filename !== filename)
+    );
   };
 
+  const attachedImages = attachments.filter((a) => a.kind === 'image');
+  const attachedFiles = attachments.filter((a) => a.kind !== 'image');
+
+  // One council run at a time: a second one would race the first for the
+  // same rate limit and fan out another seven model calls.
   const canSend =
-    (input.trim() || attachments.length > 0) && !isLoading && !isUploading;
+    (input.trim() || attachments.length > 0) &&
+    !isLoading &&
+    !busyElsewhere &&
+    !isUploading;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -115,7 +151,8 @@ export default function ChatInterface({
 
     onSendMessage(
       input,
-      attachments.map((img) => img.filename)
+      attachedImages.map((image) => image.filename),
+      attachedFiles.map(({ filename, name }) => ({ filename, name }))
     );
     setInput('');
     setAttachments([]);
@@ -161,14 +198,30 @@ export default function ChatInterface({
                         {msg.images.map((filename) => (
                           <a
                             key={filename}
-                            href={api.imageUrl(filename)}
+                            href={api.fileUrl(filename)}
                             target="_blank"
                             rel="noreferrer"
                           >
                             <img
-                              src={api.imageUrl(filename)}
+                              src={api.fileUrl(filename)}
                               alt="Attached image"
                             />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    {msg.files?.length > 0 && (
+                      <div className="message-files">
+                        {msg.files.map((file) => (
+                          <a
+                            key={file.filename}
+                            className="file-chip"
+                            href={api.fileUrl(file.filename)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <FileIcon />
+                            <span className="file-chip-name">{file.name}</span>
                           </a>
                         ))}
                       </div>
@@ -239,16 +292,36 @@ export default function ChatInterface({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {attachments.length > 0 && (
+        {attachedImages.length > 0 && (
           <div className="attachment-previews">
-            {attachments.map((img) => (
-              <div key={img.filename} className="attachment-preview">
-                <img src={api.imageUrl(img.filename)} alt="Attachment" />
+            {attachedImages.map((image) => (
+              <div key={image.filename} className="attachment-preview">
+                <img src={api.fileUrl(image.filename)} alt="Attachment" />
                 <button
                   type="button"
                   className="attachment-remove"
-                  onClick={() => removeAttachment(img.filename)}
-                  title="Remove image"
+                  onClick={() => removeAttachment(image.filename)}
+                  title="Remove attachment"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {attachedFiles.length > 0 && (
+          <div className="attachment-files">
+            {attachedFiles.map((file) => (
+              <div key={file.filename} className="file-chip">
+                <FileIcon />
+                <span className="file-chip-name">{file.name}</span>
+                <span className="file-chip-size">{formatSize(file.size)}</span>
+                <button
+                  type="button"
+                  className="file-chip-remove"
+                  onClick={() => removeAttachment(file.filename)}
+                  title="Remove attachment"
                 >
                   ×
                 </button>
@@ -260,7 +333,7 @@ export default function ChatInterface({
         {isUploading && (
           <div className="attachment-status">
             <div className="spinner"></div>
-            <span>Uploading image...</span>
+            <span>Uploading...</span>
           </div>
         )}
 
@@ -268,10 +341,20 @@ export default function ChatInterface({
           <div className="attachment-error">{uploadError}</div>
         )}
 
+        {busyElsewhere && (
+          <div className="attachment-status">
+            <div className="spinner"></div>
+            <span>
+              Another conversation is still consulting the council. It keeps
+              running - you can watch it from the sidebar.
+            </span>
+          </div>
+        )}
+
         <div className="input-row">
           <input
             type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
+            accept="image/png,image/jpeg,image/webp,image/gif,text/*,.md,.markdown,.txt,.csv,.tsv,.json,.jsonl,.yaml,.yml,.toml,.ini,.cfg,.conf,.log,.xml,.html,.css,.scss,.py,.js,.jsx,.ts,.tsx,.sh,.bash,.zsh,.rb,.go,.rs,.java,.kt,.c,.h,.cpp,.hpp,.cs,.php,.swift,.sql,.r,.lua,.pl,.pine,.diff,.patch,.ipynb"
             multiple
             ref={fileInputRef}
             onChange={handleFileChange}
@@ -281,8 +364,8 @@ export default function ChatInterface({
             type="button"
             className="attach-button"
             onClick={() => fileInputRef.current?.click()}
-            disabled={isLoading || isUploading}
-            title="Attach images (you can also drop or paste them)"
+            disabled={isLoading || busyElsewhere || isUploading}
+            title="Attach images or text files (you can also drop or paste them)"
           >
             <svg
               width="20"
@@ -306,7 +389,7 @@ export default function ChatInterface({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            disabled={isLoading}
+            disabled={isLoading || busyElsewhere}
             rows={3}
           />
           <button type="submit" className="send-button" disabled={!canSend}>

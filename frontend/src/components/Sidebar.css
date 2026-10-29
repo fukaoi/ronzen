@@ -17,10 +17,18 @@
 
 .sidebar-header h1 {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   margin: 0;
   padding-left: 6px;
-  color: var(--text-muted);
+  background: linear-gradient(
+    100deg,
+    var(--c-violet),
+    var(--c-blue) 45%,
+    var(--c-teal)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
   text-transform: uppercase;
   letter-spacing: 2px;
 }
@@ -28,7 +36,7 @@
 .new-conversation-btn {
   width: 100%;
   padding: 15px;
-  background: var(--accent);
+  background: var(--accent-gradient);
   border: none;
   border-radius: var(--radius-md);
   box-shadow: var(--nm-accent);
@@ -43,7 +51,7 @@
 }
 
 .new-conversation-btn:hover {
-  background: var(--accent-hover);
+  filter: saturate(1.15) brightness(1.06);
 }
 
 .new-conversation-btn:active {
@@ -70,24 +78,58 @@
 }
 
 .conversation-item {
-  padding: 14px 16px;
+  position: relative;
+  padding: 14px 16px 14px 22px;
   border-radius: var(--radius-md);
   cursor: pointer;
   background: var(--bg);
   box-shadow: var(--nm-raised-sm);
+  overflow: hidden;
   transition: box-shadow var(--ease), transform var(--ease);
 }
 
+/* A coloured spine, cycling through the palette, so conversations are
+   easier to pick out than a wall of identical cards */
+.conversation-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 14%;
+  bottom: 14%;
+  width: 5px;
+  border-radius: 0 4px 4px 0;
+  background: var(--item-color, var(--accent));
+  opacity: 0.75;
+  transition: opacity var(--ease), top var(--ease), bottom var(--ease);
+}
+
+.conversation-item:nth-child(6n + 1) { --item-color: var(--c-violet); }
+.conversation-item:nth-child(6n + 2) { --item-color: var(--c-cyan); }
+.conversation-item:nth-child(6n + 3) { --item-color: var(--c-amber); }
+.conversation-item:nth-child(6n + 4) { --item-color: var(--c-rose); }
+.conversation-item:nth-child(6n + 5) { --item-color: var(--c-teal); }
+.conversation-item:nth-child(6n + 6) { --item-color: var(--c-indigo); }
+
 .conversation-item:hover {
   box-shadow: var(--nm-raised);
+}
+
+.conversation-item:hover::before {
+  opacity: 1;
 }
 
 .conversation-item.active {
   box-shadow: var(--nm-inset);
 }
 
+.conversation-item.active::before {
+  top: 0;
+  bottom: 0;
+  opacity: 1;
+}
+
 .conversation-item.active .conversation-title {
-  color: var(--accent);
+  color: var(--item-color, var(--accent));
 }
 
 .conversation-title {
@@ -107,4 +149,33 @@
   color: var(--text-faint);
   font-size: 11px;
   letter-spacing: 0.4px;
+}
+
+/* A run keeps going when you look at another conversation, so say where it is */
+.conversation-running {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--item-color, var(--accent));
+  font-weight: 600;
+}
+
+.running-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: running-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes running-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.72);
+  }
 }

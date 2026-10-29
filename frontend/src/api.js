@@ -58,17 +58,17 @@ export const api = {
   },
 
   /**
-   * Upload images as base64 data URLs.
-   * @param {string[]} dataUrls - Images encoded as "data:image/...;base64,..."
-   * @returns {Promise<Array<{filename: string, url: string}>>}
+   * Upload attachments as base64 data URLs.
+   * @param {Array<{data_url: string, name: string}>} files
+   * @returns {Promise<Array<{filename: string, name: string, kind: string, size: number, url: string}>>}
    */
-  async uploadImages(dataUrls) {
+  async uploadFiles(files) {
     const response = await fetch(`${API_BASE}/api/uploads`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ images: dataUrls }),
+      body: JSON.stringify({ files }),
     });
     if (!response.ok) {
       const error = await response.json().catch(() => null);
@@ -78,10 +78,10 @@ export const api = {
   },
 
   /**
-   * Build the URL for an uploaded image.
-   * @param {string} filename - Filename returned by uploadImages
+   * Build the URL for an uploaded attachment.
+   * @param {string} filename - Filename returned by uploadFiles
    */
-  imageUrl(filename) {
+  fileUrl(filename) {
     return `${API_BASE}/api/uploads/${filename}`;
   },
 
@@ -90,8 +90,9 @@ export const api = {
    * @param {string} conversationId - The conversation ID
    * @param {string} content - The message content
    * @param {string[]} images - Filenames of uploaded images to attach
+   * @param {string[]} files - Filenames of uploaded text files to attach
    */
-  async sendMessage(conversationId, content, images = []) {
+  async sendMessage(conversationId, content, images = [], files = []) {
     const response = await fetch(
       `${API_BASE}/api/conversations/${conversationId}/message`,
       {
@@ -99,7 +100,7 @@ export const api = {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content, images }),
+        body: JSON.stringify({ content, images, files }),
       }
     );
     if (!response.ok) {
@@ -113,10 +114,11 @@ export const api = {
    * @param {string} conversationId - The conversation ID
    * @param {string} content - The message content
    * @param {string[]} images - Filenames of uploaded images to attach
+   * @param {string[]} files - Filenames of uploaded text files to attach
    * @param {function} onEvent - Callback function for each event: (eventType, data) => void
    * @returns {Promise<void>}
    */
-  async sendMessageStream(conversationId, content, images, onEvent) {
+  async sendMessageStream(conversationId, content, images, files, onEvent) {
     const response = await fetch(
       `${API_BASE}/api/conversations/${conversationId}/message/stream`,
       {
@@ -124,7 +126,11 @@ export const api = {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content, images: images || [] }),
+        body: JSON.stringify({
+          content,
+          images: images || [],
+          files: files || [],
+        }),
       }
     );
 
@@ -135,23 +141,39 @@ export const api = {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
 
+    // A network chunk is not an SSE event: it can split a multi-byte
+    // character, carry half an event, or carry several. Decode in streaming
+    // mode and only hand over whole events, separated by a blank line.
+    let buffer = '';
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
+      buffer += decoder.decode(value, { stream: true });
 
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
+      let boundary = buffer.indexOf('\n\n');
+      while (boundary !== -1) {
+        const rawEvent = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+
+        for (const line of rawEvent.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+
+          let event;
           try {
-            const event = JSON.parse(data);
-            onEvent(event.type, event);
+            event = JSON.parse(line.slice(6));
           } catch (e) {
             console.error('Failed to parse SSE event:', e);
+            continue;
           }
+
+          // Deliberately outside the try above: a bug in the handler is not
+          // a parse failure, and swallowing it here would strand the caller
+          onEvent(event.type, event);
         }
+
+        boundary = buffer.indexOf('\n\n');
       }
     }
   },

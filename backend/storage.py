@@ -8,7 +8,12 @@ import uuid
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from pathlib import Path
-from .config import DATA_DIR, UPLOAD_DIR, MAX_IMAGE_BYTES
+from .config import (
+    DATA_DIR,
+    UPLOAD_DIR,
+    MAX_IMAGE_BYTES,
+    MAX_TEXT_BYTES,
+)
 
 # Image types accepted for upload, mapped to the extension used on disk
 ALLOWED_IMAGE_TYPES = {
@@ -27,9 +32,14 @@ EXTENSION_TO_MIME = {
     ".gif": "image/gif",
 }
 
+# The browser leaves the media type empty for file types it does not know
+# (.pine, .pinescript and friends), so the mime group has to be optional.
 DATA_URL_PATTERN = re.compile(
-    r"data:(?P<mime>[\w./+-]+);base64,(?P<payload>.*)", re.DOTALL
+    r"data:(?P<mime>[\w./+-]*);base64,(?P<payload>.*)", re.DOTALL
 )
+
+# Everything outside this set is replaced when an uploaded name is stored
+UNSAFE_NAME_CHARS = re.compile(r"[^A-Za-z0-9._-]+")
 
 
 def ensure_data_dir():
@@ -134,7 +144,8 @@ def list_conversations() -> List[Dict[str, Any]]:
 def add_user_message(
     conversation_id: str,
     content: str,
-    images: Optional[List[str]] = None
+    images: Optional[List[str]] = None,
+    files: Optional[List[str]] = None
 ):
     """
     Add a user message to a conversation.
@@ -143,6 +154,10 @@ def add_user_message(
         conversation_id: Conversation identifier
         content: User message content
         images: Filenames of previously uploaded images attached to the message
+        files: Filenames of previously uploaded text files attached to it
+
+    Text files are stored with their display name alongside the stored
+    filename, so the UI does not have to take the name apart itself.
     """
     conversation = get_conversation(conversation_id)
     if conversation is None:
@@ -151,7 +166,11 @@ def add_user_message(
     conversation["messages"].append({
         "role": "user",
         "content": content,
-        "images": images or []
+        "images": images or [],
+        "files": [
+            {"filename": filename, "name": display_name(filename)}
+            for filename in (files or [])
+        ]
     })
 
     save_conversation(conversation)
@@ -202,7 +221,7 @@ def update_conversation_title(conversation_id: str, title: str):
     save_conversation(conversation)
 
 
-# --- Image uploads ---
+# --- Uploads ---
 
 
 def ensure_upload_dir():
@@ -211,42 +230,92 @@ def ensure_upload_dir():
 
 
 def get_upload_path(filename: str) -> str:
-    """Get the file path for an uploaded image (basename only, no traversal)."""
+    """Get the file path for an upload (basename only, no traversal)."""
     return os.path.join(UPLOAD_DIR, os.path.basename(filename))
 
 
-def save_image_from_data_url(data_url: str) -> Dict[str, Any]:
+def safe_attachment_name(name: str) -> str:
     """
-    Decode a base64 data URL and store it as an image file.
+    Reduce an uploaded file's name to something safe to store and display.
 
-    Args:
-        data_url: A "data:image/...;base64,..." URL
+    Keeps the name recognisable (README.md stays README.md) while dropping
+    anything that could escape the upload directory or hide the file.
+    """
+    cleaned = UNSAFE_NAME_CHARS.sub("-", os.path.basename(name or "").strip())
+    cleaned = cleaned.strip(".-")
+    return cleaned[:80]
+
+
+def display_name(filename: str) -> str:
+    """
+    Recover the name a text upload was given by the user.
+
+    Text files are stored as "<uuid>_<safe name>"; a uuid4 never contains an
+    underscore, so the first one separates the two halves.
+    """
+    base = os.path.basename(filename)
+    return base.split("_", 1)[1] if "_" in base else base
+
+
+def decode_data_url(data_url: str) -> tuple:
+    """
+    Split a base64 data URL into its media type and bytes.
 
     Returns:
-        Dict with 'filename', 'mime_type' and 'size'
+        Tuple of (mime_type, payload bytes)
 
     Raises:
-        ValueError: If the data URL is malformed or the type/size is not allowed
+        ValueError: If the data URL is malformed or carries no data
     """
     match = DATA_URL_PATTERN.fullmatch(data_url.strip())
     if match is None:
-        raise ValueError("Expected a base64 data URL (data:image/...;base64,...)")
+        raise ValueError("Expected a base64 data URL (data:<type>;base64,...)")
 
-    mime_type = match.group("mime").lower()
-    if mime_type not in ALLOWED_IMAGE_TYPES:
+    try:
+        payload = base64.b64decode(match.group("payload"), validate=True)
+    except Exception as e:
+        raise ValueError("Attachment data is not valid base64") from e
+
+    if not payload:
+        raise ValueError("Attachment is empty")
+
+    return match.group("mime").lower(), payload
+
+
+def save_upload_from_data_url(data_url: str, name: str = "") -> Dict[str, Any]:
+    """
+    Decode a base64 data URL and store it, as an image or as a text file.
+
+    Images go to the model as image parts; everything else is treated as text
+    and gets inlined into the prompt, so it has to decode as UTF-8.
+
+    Args:
+        data_url: A "data:<type>;base64,..." URL
+        name: The file's original name, used for text files
+
+    Returns:
+        Dict with 'filename', 'name', 'kind' ("image" or "text"), 'mime_type'
+        and 'size'
+
+    Raises:
+        ValueError: If the data is malformed, too large, or not readable text
+    """
+    mime_type, payload = decode_data_url(data_url)
+
+    if mime_type in ALLOWED_IMAGE_TYPES:
+        return _save_image(payload, mime_type)
+
+    if mime_type.startswith("image/"):
         raise ValueError(
             f"Unsupported image type: {mime_type}. "
             f"Allowed: {', '.join(sorted(ALLOWED_IMAGE_TYPES))}"
         )
 
-    try:
-        payload = base64.b64decode(match.group("payload"), validate=True)
-    except Exception as e:
-        raise ValueError("Image data is not valid base64") from e
+    return _save_text(payload, name)
 
-    if not payload:
-        raise ValueError("Image data is empty")
 
+def _save_image(payload: bytes, mime_type: str) -> Dict[str, Any]:
+    """Store image bytes under a generated name."""
     if len(payload) > MAX_IMAGE_BYTES:
         raise ValueError(
             f"Image is too large ({len(payload)} bytes, "
@@ -258,7 +327,74 @@ def save_image_from_data_url(data_url: str) -> Dict[str, Any]:
     with open(get_upload_path(filename), 'wb') as f:
         f.write(payload)
 
-    return {"filename": filename, "mime_type": mime_type, "size": len(payload)}
+    return {
+        "filename": filename,
+        "name": filename,
+        "kind": "image",
+        "mime_type": mime_type,
+        "size": len(payload),
+    }
+
+
+def _save_text(payload: bytes, name: str) -> Dict[str, Any]:
+    """
+    Store a text file, keeping its name so the model can be told what it is.
+
+    The type the browser reports is ignored: it is empty or
+    application/octet-stream for most source files. Decoding as UTF-8 is what
+    actually decides whether this is text we can put in a prompt.
+    """
+    if len(payload) > MAX_TEXT_BYTES:
+        raise ValueError(
+            f"{name or 'File'} is too large "
+            f"({len(payload)} bytes, maximum is {MAX_TEXT_BYTES} bytes)"
+        )
+
+    try:
+        content = payload.decode('utf-8')
+    except UnicodeDecodeError:
+        raise ValueError(
+            f"{name or 'File'} is not a UTF-8 text file. Images and text "
+            "files can be attached; PDF, Word and other binary formats cannot."
+        )
+
+    if "\x00" in content:
+        raise ValueError(f"{name or 'File'} looks binary, not text")
+
+    ensure_upload_dir()
+    safe_name = safe_attachment_name(name) or "attachment.txt"
+    filename = f"{uuid.uuid4()}_{safe_name}"
+    with open(get_upload_path(filename), 'wb') as f:
+        f.write(payload)
+
+    return {
+        "filename": filename,
+        "name": safe_name,
+        "kind": "text",
+        "mime_type": "text/plain",
+        "size": len(payload),
+    }
+
+
+def read_text_file(filename: str) -> Optional[str]:
+    """
+    Read a stored text attachment back for inlining into a prompt.
+
+    Args:
+        filename: Filename returned by save_upload_from_data_url
+
+    Returns:
+        The file's text, or None if it is missing or no longer decodes
+    """
+    path = get_upload_path(filename)
+    if not os.path.exists(path):
+        return None
+
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except (OSError, UnicodeDecodeError):
+        return None
 
 
 def read_image_as_data_url(filename: str) -> Optional[str]:
