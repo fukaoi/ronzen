@@ -34,3 +34,95 @@
   font-size: 15px;
   padding: 0;
 }
+
+/* --- Toolbar: view toggle + copy --- */
+
+.final-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.final-toolbar .chairman-label {
+  margin-bottom: 0;
+}
+
+.final-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--bg);
+  box-shadow: var(--nm-inset-sm);
+}
+
+.toggle-option {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  transition: box-shadow var(--ease), color var(--ease);
+}
+
+.toggle-option:hover {
+  color: var(--text);
+}
+
+.toggle-option.active {
+  background: var(--bg);
+  box-shadow: var(--nm-raised-sm);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.copy-button {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--bg);
+  box-shadow: var(--nm-raised-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 600;
+  transition: box-shadow var(--ease), color var(--ease);
+}
+
+.copy-button:hover {
+  color: var(--accent);
+  box-shadow: var(--nm-raised);
+}
+
+.copy-button:active {
+  box-shadow: var(--nm-inset-sm);
+}
+
+.copy-button.copied {
+  color: var(--accent);
+  box-shadow: var(--nm-inset-sm);
+}
+
+/* Plain text view */
+
+.final-plain {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 15px;
+}
