@@ -24,7 +24,9 @@
 }
 
 .chairman-label {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 16px;
   padding: 7px 15px;
   border-radius: 999px;
@@ -133,4 +135,15 @@
   word-break: break-word;
   font-family: inherit;
   font-size: 15px;
+}
+
+.chairman-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: #fff;
 }

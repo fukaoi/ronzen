@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import Stage1 from './Stage1';
 import Stage2 from './Stage2';
 import Stage3 from './Stage3';
+import CouncilRoster from './CouncilRoster';
 import { api } from '../api';
 import './ChatInterface.css';
 
@@ -184,7 +185,7 @@ export default function ChatInterface({
         {conversation.messages.length === 0 ? (
           <div className="empty-state">
             <h2>Start a conversation</h2>
-            <p>Ask a question to consult the LLM Council</p>
+            <p>Ask a question to consult the LLM Council2</p>
           </div>
         ) : (
           conversation.messages.map((msg, index) => (
@@ -235,7 +236,12 @@ export default function ChatInterface({
                 </div>
               ) : (
                 <div className="assistant-message">
-                  <div className="message-label">LLM Council</div>
+                  <div className="message-label">LLM Council2</div>
+
+                  <CouncilRoster
+                    members={msg.stage1?.map((resp) => resp.model)}
+                    chairman={msg.stage3?.model}
+                  />
 
                   {/* Stage 1 */}
                   {msg.loading?.stage1 && (
@@ -377,9 +383,10 @@ export default function ChatInterface({
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <rect x="3" y="3" width="18" height="18" rx="4" />
-              <circle cx="8.5" cy="9" r="1.6" />
-              <path d="M21 15.5 16 10.5 5.5 21" />
+              {/* Stacked documents: images and text files are both accepted */}
+              <path d="M20 7h-3a2 2 0 0 1-2-2V2" />
+              <path d="M9 18a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7l4 4v10a2 2 0 0 1-2 2Z" />
+              <path d="M3 7.6v12.8A1.6 1.6 0 0 0 4.6 22h9.8" />
             </svg>
           </button>
           <textarea

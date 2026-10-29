@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import ModelIcon from './ModelIcon';
+import { shortName } from '../models';
 import './Stage3.css';
 
 // Strip the markdown syntax so the text view (and its copy) is plain prose.
@@ -59,7 +61,10 @@ export default function Stage3({ finalResponse }) {
       <div className="final-response">
         <div className="final-toolbar">
           <div className="chairman-label">
-            Chairman: {finalResponse.model.split('/')[1] || finalResponse.model}
+            <span className="chairman-icon">
+              <ModelIcon model={finalResponse.model} size={14} />
+            </span>
+            Chairman: {shortName(finalResponse.model)}
           </div>
 
           <div className="final-actions">

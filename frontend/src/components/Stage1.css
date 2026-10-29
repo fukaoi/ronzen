@@ -90,14 +90,16 @@
 }
 
 /* Each council member keeps the same colour across both tab strips,
-   since the models are listed in the same order in stage 1 and stage 2 */
-.tab::before {
-  content: '';
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--model-color, var(--accent));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--model-color) 22%, transparent);
+   since the models are listed in the same order in stage 1 and stage 2.
+   The provider logo leads the label; the colour marks the active tab. */
+.tab .model-icon {
+  opacity: 0.75;
+  transition: opacity var(--ease);
+}
+
+.tab:hover .model-icon,
+.tab.active .model-icon {
+  opacity: 1;
 }
 
 .tab:nth-child(6n + 1) { --model-color: var(--c-violet); }
@@ -128,7 +130,9 @@
 }
 
 .model-name {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 14px;
   padding: 5px 12px;
   border-radius: 999px;

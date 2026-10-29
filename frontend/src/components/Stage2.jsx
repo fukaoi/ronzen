@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import ModelIcon from './ModelIcon';
+import { shortName } from '../models';
 import './Stage2.css';
 
 function deAnonymizeText(text, labelToModel) {
@@ -8,10 +10,20 @@ function deAnonymizeText(text, labelToModel) {
   let result = text;
   // Replace each "Response X" with the actual model name
   Object.entries(labelToModel).forEach(([label, model]) => {
-    const modelShortName = model.split('/')[1] || model;
+    const modelShortName = shortName(model);
     result = result.replace(new RegExp(label, 'g'), `**${modelShortName}**`);
   });
   return result;
+}
+
+/**
+ * How far along the bar a model's average rank reaches: a unanimous 1st
+ * fills it, a unanimous last leaves a sliver so every model stays visible.
+ */
+function rankStrength(averageRank, modelCount) {
+  if (modelCount <= 1) return 1;
+  const strength = (modelCount - averageRank) / (modelCount - 1);
+  return Math.max(0.06, Math.min(1, strength));
 }
 
 export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
@@ -38,13 +50,15 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
             className={`tab ${activeTab === index ? 'active' : ''}`}
             onClick={() => setActiveTab(index)}
           >
-            {rank.model.split('/')[1] || rank.model}
+            <ModelIcon model={rank.model} size={16} />
+            {shortName(rank.model)}
           </button>
         ))}
       </div>
 
       <div className="tab-content">
-        <div className="ranking-model">
+        <div className="model-name">
+          <ModelIcon model={rankings[activeTab].model} size={14} />
           {rankings[activeTab].model}
         </div>
         <div className="ranking-content markdown-content">
@@ -60,9 +74,14 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
             <ol>
               {rankings[activeTab].parsed_ranking.map((label, i) => (
                 <li key={i}>
-                  {labelToModel && labelToModel[label]
-                    ? labelToModel[label].split('/')[1] || labelToModel[label]
-                    : label}
+                  {labelToModel && labelToModel[label] ? (
+                    <span className="parsed-ranking-model">
+                      <ModelIcon model={labelToModel[label]} size={14} />
+                      {shortName(labelToModel[label])}
+                    </span>
+                  ) : (
+                    label
+                  )}
                 </li>
               ))}
             </ol>
@@ -78,10 +97,18 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
           </p>
           <div className="aggregate-list">
             {aggregateRankings.map((agg, index) => (
-              <div key={index} className="aggregate-item">
+              <div
+                key={index}
+                className="aggregate-item"
+                style={{ '--rank-strength': rankStrength(agg.average_rank, aggregateRankings.length) }}
+              >
                 <span className="rank-position">{index + 1}</span>
-                <span className="rank-model">
-                  {agg.model.split('/')[1] || agg.model}
+                <ModelIcon model={agg.model} size={18} raised />
+                <span className="rank-body">
+                  <span className="rank-model">{shortName(agg.model)}</span>
+                  <span className="rank-bar">
+                    <span className="rank-bar-fill"></span>
+                  </span>
                 </span>
                 <span className="rank-score">
                   Avg: {agg.average_rank.toFixed(2)}

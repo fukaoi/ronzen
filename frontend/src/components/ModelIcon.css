@@ -1,0 +1,38 @@
+.model-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+/* A raised neumorphic disc around the logo, for avatars */
+.model-icon.raised {
+  width: calc(var(--icon-size) * 1.9);
+  height: calc(var(--icon-size) * 1.9);
+  border-radius: 50%;
+  background: var(--bg);
+  box-shadow: var(--nm-raised-sm);
+}
+
+.model-icon-img,
+.model-icon-mask {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+.model-icon-img {
+  display: block;
+  object-fit: contain;
+}
+
+.model-icon-mask {
+  display: block;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
