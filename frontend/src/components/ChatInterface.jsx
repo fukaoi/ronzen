@@ -211,8 +211,9 @@ export default function ChatInterface({
   };
 
   const handleKeyDown = (e) => {
-    // Submit on Enter (without Shift)
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // Plain Enter inserts a newline (avoids accidental sends, incl. IME confirm);
+    // submit only via Ctrl/Cmd+Enter or the send button
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSubmit(e);
     }
@@ -494,7 +495,7 @@ export default function ChatInterface({
           </button>
           <textarea
             className="message-input"
-            placeholder="Ask your question...  ·  Enter to send, Shift+Enter for a new line"
+            placeholder="Ask your question...  ·  Enter for a new line, Ctrl/Cmd+Enter to send"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}

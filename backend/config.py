@@ -61,13 +61,21 @@ EXTRA_ALLOWED_ORIGINS = [
 # Set to 0 to disable.
 RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "10"))
 
-COUNCIL_MODELS = [
+# Council members: OpenRouter model identifiers, comma separated in .env.
+# Defaults apply when COUNCIL_MODELS is unset or empty.
+_DEFAULT_COUNCIL_MODELS = [
     "~openai/gpt-astra-latest",
     "anthropic/claude-opus-5.5",
-    "qwen/qwen3.8-max-0902"
+    "qwen/qwen3.8-max-0902",
 ]
+COUNCIL_MODELS = [
+    model.strip()
+    for model in os.getenv("COUNCIL_MODELS", "").split(",")
+    if model.strip()
+] or _DEFAULT_COUNCIL_MODELS
 
-CHAIRMAN_MODEL = "qwen/qwen3.8-max-0902"
+# Chairman: the model that synthesizes the final answer
+CHAIRMAN_MODEL = os.getenv("CHAIRMAN_MODEL", "").strip() or "google/gemini-4-argon"
 
 
 # コスト削減構成

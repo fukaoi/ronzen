@@ -191,6 +191,11 @@ class ConversationMetadata(BaseModel):
     running: bool = False
 
 
+class RenameConversationRequest(BaseModel):
+    """Request to give a conversation a new title."""
+    title: str
+
+
 class Conversation(BaseModel):
     """Full conversation with all messages."""
     id: str
@@ -523,6 +528,45 @@ async def create_conversation(request: CreateConversationRequest):
     return conversation
 
 
+@app.patch("/api/conversations/{conversation_id}")
+async def rename_conversation(conversation_id: str, request: RenameConversationRequest):
+    """Change a conversation's title."""
+    title = " ".join(request.title.split())
+    if not title:
+        raise HTTPException(status_code=400, detail="Title must not be empty")
+    if storage.get_conversation(conversation_id) is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    storage.update_conversation_title(conversation_id, title[:100])
+    return {"id": conversation_id, "title": title[:100]}
+
+
+def with_stage2_metadata(conversation: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Rebuild the stage 2 metadata that storage does not keep.
+
+    Labels are assigned in stage 1 order, so the mapping and the aggregate
+    rankings follow from what is stored, for old conversations too.
+    """
+    messages = []
+    for message in conversation["messages"]:
+        if message.get("role") == "assistant" and message.get("stage1") and message.get("stage2"):
+            label_to_model = {
+                f"Response {chr(65 + i)}": result["model"]
+                for i, result in enumerate(message["stage1"])
+            }
+            message = {
+                **message,
+                "metadata": {
+                    "label_to_model": label_to_model,
+                    "aggregate_rankings": calculate_aggregate_rankings(
+                        message["stage2"], label_to_model
+                    ),
+                },
+            }
+        messages.append(message)
+    return {**conversation, "messages": messages}
+
+
 @app.get("/api/conversations/{conversation_id}", response_model=Conversation)
 async def get_conversation(conversation_id: str):
     """Get a specific conversation with all its messages."""
@@ -530,7 +574,7 @@ async def get_conversation(conversation_id: str):
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return {
-        **with_context_size(conversation),
+        **with_context_size(with_stage2_metadata(conversation)),
         "running": conversation_id in _active_runs,
     }
 
@@ -642,12 +686,22 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
 
             # Start title generation in parallel (don't await yet)
             title_task = None
+            title_saver = None
             if is_first_message:
                 title_task = asyncio.create_task(
                     generate_conversation_title(
                         request.content, attachment_title(files)
                     )
                 )
+
+            if title_task:
+                async def save_title():
+                    # Saved as soon as it is ready, not after the council
+                    # finishes, so a long or failed run still gets a title
+                    title = await title_task
+                    storage.update_conversation_title(conversation_id, title)
+                    run.emit({'type': 'title_complete', 'data': {'title': title}})
+                title_saver = asyncio.create_task(save_title())
 
             # Stage 1: Collect responses
             run.emit({'type': 'stage1_start'})
@@ -672,11 +726,8 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
             stage3_result = await stage3_synthesize_final(request.content, stage1_results, stage2_results, images, history, files)
             run.emit({'type': 'stage3_complete', 'data': stage3_result})
 
-            # Wait for title generation if it was started
-            if title_task:
-                title = await title_task
-                storage.update_conversation_title(conversation_id, title)
-                run.emit({'type': 'title_complete', 'data': {'title': title}})
+            if title_saver:
+                await title_saver
 
             # Save complete assistant message
             storage.add_assistant_message(

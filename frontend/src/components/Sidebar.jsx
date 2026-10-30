@@ -7,7 +7,24 @@ export default function Sidebar({
   streamingId,
   onSelectConversation,
   onNewConversation,
+  onRenameConversation,
 }) {
+  const [editingId, setEditingId] = useState(null);
+  const [draft, setDraft] = useState('');
+
+  const startEditing = (conv) => {
+    setEditingId(conv.id);
+    setDraft(conv.title || '');
+  };
+
+  const commit = (conv) => {
+    const title = draft.trim();
+    setEditingId(null);
+    if (title && title !== conv.title) {
+      onRenameConversation(conv.id, title);
+    }
+  };
+
   return (
     <div className="sidebar">
       <div className="sidebar-header">
@@ -29,9 +46,28 @@ export default function Sidebar({
               }`}
               onClick={() => onSelectConversation(conv.id)}
             >
-              <div className="conversation-title">
-                {conv.title || 'New Conversation'}
-              </div>
+              {editingId === conv.id ? (
+                <input
+                  className="conversation-title-input"
+                  value={draft}
+                  autoFocus
+                  maxLength={100}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onBlur={() => commit(conv)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                      commit(conv);
+                    } else if (e.key === 'Escape') {
+                      setEditingId(null);
+                    }
+                  }}
+                />
+              ) : (
+                <div className="conversation-title">
+                  {conv.title || 'New Conversation'}
+                </div>
+              )}
               <div className="conversation-meta">
                 {conv.id === streamingId || conv.running ? (
                   <span className="conversation-running">
@@ -40,6 +76,18 @@ export default function Sidebar({
                   </span>
                 ) : (
                   `${conv.message_count} messages`
+                )}
+                {editingId !== conv.id && (
+                  <button
+                    type="button"
+                    className="conversation-edit-link"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startEditing(conv);
+                    }}
+                  >
+                    Edit
+                  </button>
                 )}
               </div>
             </div>

@@ -169,6 +169,27 @@ export const api = {
   },
 
   /**
+   * Change a conversation's title.
+   * @param {string} conversationId - The conversation ID
+   * @param {string} title - The new title
+   */
+  async renameConversation(conversationId, title) {
+    const response = await fetch(
+      `${API_BASE}/api/conversations/${conversationId}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      }
+    );
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      throw new Error(error?.detail || 'Failed to rename the conversation');
+    }
+    return response.json();
+  },
+
+  /**
    * Remove the last question and the answer that followed it.
    * @param {string} conversationId - The conversation ID
    * @param {boolean} keepAttachments - Leave the uploads on disk, for editing

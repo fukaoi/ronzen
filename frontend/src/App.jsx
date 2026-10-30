@@ -429,6 +429,14 @@ function App() {
         streamingId={streamingId}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
+        onRenameConversation={async (id, title) => {
+          try {
+            await api.renameConversation(id, title);
+            loadConversations();
+          } catch (error) {
+            console.error('Failed to rename conversation:', error);
+          }
+        }}
       />
       <ChatInterface
         conversation={currentConversation}

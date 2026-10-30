@@ -1,5 +1,6 @@
 """3-stage LLM Council orchestration."""
 
+import asyncio
 from typing import List, Dict, Any, Optional, Tuple
 from .openrouter import query_models_parallel, query_model
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
@@ -151,19 +152,33 @@ async def stage2_collect_rankings(
         for label, result in zip(labels, stage1_results)
     }
 
-    # Build the ranking prompt
-    responses_text = "\n\n".join([
-        f"Response {label}:\n{result['response']}"
-        for label, result in zip(labels, stage1_results)
-    ])
-
     attachment_note = (
         "\n\nThe question's attachments are included with this message. "
         "Take them into account when judging accuracy."
         if (images or files) else ""
     )
 
-    ranking_prompt = f"""You are evaluating different responses to the following question:
+    async def evaluate(model: str) -> Optional[Dict[str, Any]]:
+        # A model never ranks its own answer: it may recognise its own style
+        # and favour it. Labels stay the same for everyone, so the evaluator
+        # simply sees a subset of them.
+        others = [
+            (label, result) for label, result in zip(labels, stage1_results)
+            if result['model'] != model
+        ]
+        if not others:
+            return None
+
+        responses_text = "\n\n".join([
+            f"Response {label}:\n{result['response']}"
+            for label, result in others
+        ])
+        example = [f"Response {label}" for label, _ in reversed(others)]
+        example_ranking = "\n".join(
+            f"{i}. {name}" for i, name in enumerate(example, start=1)
+        )
+
+        ranking_prompt = f"""You are evaluating different responses to the following question:
 
 Question: {user_query}{attachment_note}
 
@@ -178,26 +193,23 @@ Your task:
 IMPORTANT: Your final ranking MUST be formatted EXACTLY as follows:
 - Start with the line "FINAL RANKING:" (all caps, with colon)
 - Then list the responses from best to worst as a numbered list
-- Each line should be: number, period, space, then ONLY the response label (e.g., "1. Response A")
+- Each line should be: number, period, space, then ONLY the response label (e.g., "1. {example[0]}")
+- Rank every response shown above, and only those
 - Do not add any other text or explanations in the ranking section
 
-Example of the correct format for your ENTIRE response:
-
-Response A provides good detail on X but misses Y...
-Response B is accurate but lacks depth on Z...
-Response C offers the most comprehensive answer...
+Example of the correct format for the ranking section:
 
 FINAL RANKING:
-1. Response C
-2. Response A
-3. Response B
+{example_ranking}
 
 Now provide your evaluation and ranking:"""
 
-    messages = build_messages(ranking_prompt, images, history, files)
+        messages = build_messages(ranking_prompt, images, history, files)
+        return await query_model(model, messages)
 
     # Get rankings from all council models in parallel
-    responses = await query_models_parallel(COUNCIL_MODELS, messages)
+    evaluations = await asyncio.gather(*(evaluate(m) for m in COUNCIL_MODELS))
+    responses = dict(zip(COUNCIL_MODELS, evaluations))
 
     # Format results
     stage2_results = []
@@ -349,6 +361,9 @@ def calculate_aggregate_rankings(
         for position, label in enumerate(parsed_ranking, start=1):
             if label in label_to_model:
                 model_name = label_to_model[label]
+                # A model's opinion of its own answer is not a peer vote
+                if model_name == ranking['model']:
+                    continue
                 model_positions[model_name].append(position)
 
     # Calculate average position for each model
@@ -389,30 +404,36 @@ async def generate_conversation_title(
 
     title_prompt = f"""Generate a very short title (3-5 words maximum) that summarizes the following question.
 The title should be concise and descriptive. Do not use quotes or punctuation in the title.
+Write the title in the same language as the question.
+Reply with the title only, on a single line, with no explanation or alternatives.
 
-Question: {user_query}
+Question: {user_query[:2000]}
 
 Title:"""
 
     messages = [{"role": "user", "content": title_prompt}]
 
-    # Use gemini-2.5-flash for title generation (fast and cheap)
-    response = await query_model("google/gemini-2.5-flash", messages, timeout=30.0)
+    # Use gemini-2.5-flash for title generation (fast and cheap); retry once
+    # since a transient failure would otherwise leave the generic title
+    title = ""
+    for _ in range(2):
+        response = await query_model("google/gemini-2.5-flash", messages, timeout=30.0)
+        content = (response or {}).get('content') or ""
+        # Take the first non-empty line and strip markdown / quotes
+        lines = [l.strip() for l in content.splitlines() if l.strip()]
+        title = lines[0].strip('"\'`*# 「」') if lines else ""
+        if title:
+            break
 
-    if response is None:
-        # Fallback to a generic title
-        return "New Conversation"
-
-    title = response.get('content', 'New Conversation').strip()
-
-    # Clean up the title - remove quotes, limit length
-    title = title.strip('"\'')
+    if not title:
+        # Fall back to the start of the question itself
+        title = " ".join(user_query.split())
 
     # Truncate if too long
     if len(title) > 50:
         title = title[:47] + "..."
 
-    return title
+    return title or "New Conversation"
 
 
 async def run_full_council(
