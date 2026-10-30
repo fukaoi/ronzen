@@ -64,8 +64,9 @@ RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "10"))
 COUNCIL_MODELS = [
     "~openai/gpt-astra-latest",
     "anthropic/claude-opus-5.5",
-    "google/gemini-4-argon",
+    "qwen/qwen3.8-max-0902"
 ]
+
 CHAIRMAN_MODEL = "qwen/qwen3.8-max-0902"
 
 
