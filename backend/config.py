@@ -16,6 +16,9 @@ OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 # Data directory for conversation storage
 DATA_DIR = "data/conversations"
 
+# Data directory for missions (goal-driven loops with a coding agent)
+MISSIONS_DIR = "data/missions"
+
 # Directory for uploaded images
 UPLOAD_DIR = "data/uploads"
 

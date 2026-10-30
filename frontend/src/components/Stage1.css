@@ -34,13 +34,13 @@
   letter-spacing: 0.2px;
 }
 
-/* Step badge, numbered and tinted per stage */
-.stage-title::before {
+/* Step badge, iconed and tinted per stage */
+.stage-badge {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   flex-shrink: 0;
   border-radius: 50%;
   background: var(--stage-color, var(--accent));
@@ -49,18 +49,6 @@
   color: #fff;
   font-size: 13px;
   font-weight: 700;
-}
-
-.stage1 .stage-title::before {
-  content: '1';
-}
-
-.stage2 .stage-title::before {
-  content: '2';
-}
-
-.stage3 .stage-title::before {
-  content: '3';
 }
 
 /* --- Tabs --- */

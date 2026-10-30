@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import ModelIcon from './ModelIcon';
+import StageBadge from './StageBadge';
 import { shortName } from '../models';
 import './Stage2.css';
 
@@ -35,7 +36,10 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
 
   return (
     <div className="stage stage2">
-      <h3 className="stage-title">Stage 2: Peer Rankings</h3>
+      <h3 className="stage-title">
+        <StageBadge stage={2} />
+        Stage 2: Peer Rankings
+      </h3>
 
       <h4>Raw Evaluations</h4>
       <p className="stage-description">

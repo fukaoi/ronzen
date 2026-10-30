@@ -4,6 +4,8 @@ import Stage1 from './Stage1';
 import Stage2 from './Stage2';
 import Stage3 from './Stage3';
 import CouncilRoster from './CouncilRoster';
+import Logo from './Logo';
+import StageLoader from './StageLoader';
 import { api } from '../api';
 import './ChatInterface.css';
 
@@ -316,19 +318,13 @@ export default function ChatInterface({
 
                   {/* Stage 1 */}
                   {msg.loading?.stage1 && (
-                    <div className="stage-loading">
-                      <div className="spinner"></div>
-                      <span>Running Stage 1: Collecting individual responses...</span>
-                    </div>
+                    <StageLoader stage={1}>Running Stage 1: Collecting individual responses...</StageLoader>
                   )}
                   {msg.stage1 && <Stage1 responses={msg.stage1} />}
 
                   {/* Stage 2 */}
                   {msg.loading?.stage2 && (
-                    <div className="stage-loading">
-                      <div className="spinner"></div>
-                      <span>Running Stage 2: Peer rankings...</span>
-                    </div>
+                    <StageLoader stage={2}>Running Stage 2: Peer rankings...</StageLoader>
                   )}
                   {msg.stage2 && (
                     <Stage2
@@ -340,10 +336,7 @@ export default function ChatInterface({
 
                   {/* Stage 3 */}
                   {msg.loading?.stage3 && (
-                    <div className="stage-loading">
-                      <div className="spinner"></div>
-                      <span>Running Stage 3: Final synthesis...</span>
-                    </div>
+                    <StageLoader stage={3}>Running Stage 3: Final synthesis...</StageLoader>
                   )}
                   {msg.stage3 && <Stage3 finalResponse={msg.stage3} />}
                 </div>
@@ -354,7 +347,7 @@ export default function ChatInterface({
 
         {isLoading && (
           <div className="loading-indicator">
-            <div className="spinner"></div>
+            <Logo size={34} typing />
             <span>Consulting the council...</span>
           </div>
         )}

@@ -14,7 +14,7 @@ import uuid
 import json
 import asyncio
 
-from . import storage
+from . import storage, missions
 from .config import (
     HOST,
     PORT,
@@ -778,6 +778,270 @@ async def follow_council_run(conversation_id: str):
             yield sse(event)
 
     return sse_response(watch())
+
+
+# --- Missions -----------------------------------------------------------
+#
+# A mission is a goal pursued in a loop: the council defines a task, the coding
+# agent (reached through the MCP server) does it and reports, the council
+# judges the report and defines the next task, until it says DONE.
+
+
+class CreateMissionRequest(BaseModel):
+    """Request to start a mission."""
+    goal: str
+    criteria: str = ""
+    max_iterations: int = 8
+
+
+class MissionReportRequest(BaseModel):
+    """What the coding agent (or the human, after a BLOCKED) reports."""
+    report: str
+    from_human: bool = False
+
+
+def get_mission_or_404(mission_id: str) -> Dict[str, Any]:
+    mission = missions.get_mission(mission_id)
+    if mission is None:
+        raise HTTPException(status_code=404, detail="Mission not found")
+    return mission
+
+
+async def run_mission_step(mission_id: str, prompt: str):
+    """
+    One council deliberation inside a mission, saved to its conversation.
+
+    Mirrors the streaming route: the deliberation is registered as an active
+    run, so the web UI can watch it live, and the answer is written to the
+    conversation either way. The mission is then advanced by the verdict.
+    """
+    mission = missions.get_mission(mission_id)
+    conversation_id = mission["conversation_id"]
+    run = CouncilRun(conversation_id)
+    _active_runs[conversation_id] = run
+
+    try:
+        conversation = storage.get_conversation(conversation_id)
+        if conversation is None:
+            raise ValueError("The mission's conversation no longer exists")
+        # A failed earlier attempt left its question without an answer
+        if conversation["messages"] and conversation["messages"][-1]["role"] == "user":
+            storage.remove_last_turn(conversation_id)
+            conversation = storage.get_conversation(conversation_id)
+        history = build_history_messages(conversation)
+        storage.add_user_message(conversation_id, prompt)
+
+        run.emit({'type': 'stage1_start'})
+        stage1_results = await stage1_collect_responses(prompt, [], history, [])
+        if not stage1_results:
+            raise ValueError("All council models failed to respond")
+        run.emit({'type': 'stage1_complete', 'data': stage1_results})
+
+        run.emit({'type': 'stage2_start'})
+        stage2_results, label_to_model = await stage2_collect_rankings(
+            prompt, stage1_results, [], history, []
+        )
+        aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
+        run.emit({
+            'type': 'stage2_complete',
+            'data': stage2_results,
+            'metadata': {
+                'label_to_model': label_to_model,
+                'aggregate_rankings': aggregate_rankings,
+            },
+        })
+
+        run.emit({'type': 'stage3_start'})
+        stage3_result = await stage3_synthesize_final(
+            prompt, stage1_results, stage2_results, [], history, []
+        )
+        run.emit({'type': 'stage3_complete', 'data': stage3_result})
+
+        storage.add_assistant_message(
+            conversation_id, stage1_results, stage2_results, stage3_result
+        )
+
+        verdict, body = missions.parse_verdict(stage3_result.get("response", ""))
+        mission = missions.get_mission(mission_id)
+        iteration = len(mission["iterations"])
+        if mission["status"] == "stopped":
+            # Stopped while the council was thinking: keep the answer in the
+            # conversation, but do not move the mission on
+            pass
+        elif verdict == "DONE":
+            mission["status"] = "done"
+            mission["summary"] = body
+        elif verdict == "BLOCKED":
+            mission["status"] = "blocked"
+            mission["summary"] = body
+        elif iteration >= mission["max_iterations"]:
+            mission["status"] = "limit"
+            mission["summary"] = body
+        else:
+            mission["iterations"].append({
+                "n": iteration + 1,
+                "task": body,
+                "report": None,
+                "notes": [],
+            })
+        mission["step"] = "ready"
+        mission["error"] = None
+        missions.save_mission(mission)
+
+        _active_runs.pop(conversation_id, None)
+        run.emit({'type': 'complete'})
+
+    except Exception as e:
+        mission = missions.get_mission(mission_id)
+        mission["step"] = "error"
+        mission["error"] = str(e)
+        missions.save_mission(mission)
+        run.emit({'type': 'error', 'message': str(e)})
+
+    finally:
+        _active_runs.pop(conversation_id, None)
+        run.finish()
+
+
+def start_mission_step(mission: Dict[str, Any], prompt: str):
+    """Record the prompt (so an error can be retried) and deliberate."""
+    mission["step"] = "running"
+    mission["error"] = None
+    mission["pending_prompt"] = prompt
+    missions.save_mission(mission)
+    run_task = asyncio.create_task(run_mission_step(mission["id"], prompt))
+    # Held so the garbage collector cannot take the step mid-deliberation
+    _mission_tasks.add(run_task)
+    run_task.add_done_callback(_mission_tasks.discard)
+
+
+_mission_tasks: set = set()
+
+
+@app.on_event("startup")
+async def recover_interrupted_missions():
+    """A restart kills in-flight deliberations; let the user retry them."""
+    for mission in missions.list_missions():
+        if mission["step"] == "running":
+            mission["step"] = "error"
+            mission["error"] = "Interrupted by a server restart. Retry the step."
+            missions.save_mission(mission)
+
+
+@app.get("/api/missions")
+async def list_missions():
+    """All missions, newest first, without their full iteration history."""
+    return [
+        {
+            "id": m["id"],
+            "created_at": m["created_at"],
+            "goal": m["goal"],
+            "status": m["status"],
+            "step": m["step"],
+            "iteration": len(m["iterations"]),
+            "max_iterations": m["max_iterations"],
+            "conversation_id": m["conversation_id"],
+        }
+        for m in missions.list_missions()
+    ]
+
+
+@app.post("/api/missions", dependencies=[Depends(enforce_rate_limit)])
+async def create_mission(request: CreateMissionRequest):
+    """Start a mission: the council drafts the first task."""
+    goal = request.goal.strip()
+    if not goal:
+        raise HTTPException(status_code=400, detail="The goal must not be empty")
+    if len(goal) > missions.MAX_GOAL_CHARS or len(request.criteria) > missions.MAX_GOAL_CHARS:
+        raise HTTPException(status_code=400, detail="The goal or criteria is too long")
+    if not 1 <= request.max_iterations <= missions.MAX_ITERATIONS_LIMIT:
+        raise HTTPException(
+            status_code=400,
+            detail=f"max_iterations must be between 1 and {missions.MAX_ITERATIONS_LIMIT}",
+        )
+
+    conversation = storage.create_conversation(str(uuid.uuid4()))
+    title = " ".join(goal.split())
+    storage.update_conversation_title(
+        conversation["id"], "Mission: " + (title if len(title) <= 40 else title[:37] + "...")
+    )
+    mission = missions.create_mission(
+        goal, request.criteria.strip(), request.max_iterations, conversation["id"]
+    )
+    start_mission_step(
+        mission,
+        missions.build_plan_prompt(goal, request.criteria, request.max_iterations),
+    )
+    return missions.public_view(missions.get_mission(mission["id"]))
+
+
+@app.get("/api/missions/{mission_id}")
+async def get_mission(mission_id: str):
+    """A mission with the task currently waiting for the agent, if any."""
+    return missions.public_view(get_mission_or_404(mission_id))
+
+
+@app.post(
+    "/api/missions/{mission_id}/report",
+    dependencies=[Depends(enforce_rate_limit)],
+)
+async def report_mission(mission_id: str, request: MissionReportRequest):
+    """Hand the council a report; it judges it and defines what comes next."""
+    mission = get_mission_or_404(mission_id)
+    report = request.report.strip()
+    if not report:
+        raise HTTPException(status_code=400, detail="The report must not be empty")
+    report = report[:missions.MAX_REPORT_CHARS]
+
+    if mission["step"] == "running":
+        raise HTTPException(status_code=409, detail="The council is still deliberating")
+
+    if mission["status"] == "blocked":
+        # A human answered the question the council was blocked on
+        mission["status"] = "active"
+        if mission["iterations"]:
+            mission["iterations"][-1]["notes"].append(report)
+    elif mission["status"] == "active":
+        task = missions.current_task(mission)
+        if task is None:
+            raise HTTPException(
+                status_code=409,
+                detail="There is no task awaiting a report; poll the mission first",
+            )
+        task["report"] = report
+    else:
+        raise HTTPException(
+            status_code=409, detail=f"The mission is {mission['status']}"
+        )
+
+    prompt = missions.build_next_prompt(
+        len(mission["iterations"]),
+        mission["max_iterations"],
+        report,
+        from_human=request.from_human,
+    )
+    start_mission_step(mission, prompt)
+    return missions.public_view(missions.get_mission(mission_id))
+
+
+@app.post("/api/missions/{mission_id}/retry", dependencies=[Depends(enforce_rate_limit)])
+async def retry_mission_step(mission_id: str):
+    """Run the council step again after an error."""
+    mission = get_mission_or_404(mission_id)
+    if mission["step"] != "error" or not mission["pending_prompt"]:
+        raise HTTPException(status_code=409, detail="Nothing to retry")
+    start_mission_step(mission, mission["pending_prompt"])
+    return missions.public_view(missions.get_mission(mission_id))
+
+
+@app.post("/api/missions/{mission_id}/stop")
+async def stop_mission(mission_id: str):
+    """Stop the loop. A deliberation already running still finishes."""
+    mission = get_mission_or_404(mission_id)
+    if mission["status"] in ("active", "blocked"):
+        mission["status"] = "stopped"
+        missions.save_mission(mission)
+    return missions.public_view(mission)
 
 
 # Serve the built frontend from this same app, when it has been built.

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { Plus, Landmark } from 'lucide-react';
+import Logo from './Logo';
 import './Sidebar.css';
 
 export default function Sidebar({
@@ -8,6 +10,8 @@ export default function Sidebar({
   onSelectConversation,
   onNewConversation,
   onRenameConversation,
+  view,
+  onShowMissions,
 }) {
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState('');
@@ -28,9 +32,20 @@ export default function Sidebar({
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <h1>LLM COUNCIL2</h1>
+        <div className="brand">
+          <Logo size={44} />
+          <h1>LLM COUNCIL2</h1>
+        </div>
         <button className="new-conversation-btn" onClick={onNewConversation}>
-          + New Conversation
+          <Plus size={16} strokeWidth={2.4} />
+          New Conversation
+        </button>
+        <button
+          className={`missions-btn ${view === 'missions' ? 'active' : ''}`}
+          onClick={onShowMissions}
+        >
+          <Landmark size={15} />
+          Missions
         </button>
       </div>
 
@@ -80,13 +95,25 @@ export default function Sidebar({
                 {editingId !== conv.id && (
                   <button
                     type="button"
-                    className="conversation-edit-link"
+                    className="conversation-edit-btn"
+                    title="Rename"
+                    aria-label="Rename conversation"
                     onClick={(e) => {
                       e.stopPropagation();
                       startEditing(conv);
                     }}
                   >
-                    Edit
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                    </svg>
                   </button>
                 )}
               </div>

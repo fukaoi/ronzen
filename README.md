@@ -85,3 +85,20 @@ Then open http://localhost:5173 in your browser.
 - **Frontend:** React + Vite, react-markdown for rendering
 - **Storage:** JSON files in `data/conversations/`
 - **Package Management:** uv for Python, npm for JavaScript
+
+## Missions: the council as the brain, Claude as the hands
+
+A mission is a goal pursued in a loop. The council writes each task and judges each report; a coding agent (Claude Code or Claude Desktop) does the work, until the council says the goal is reached.
+
+1. Register the MCP server once (user scope, so it works in any project):
+
+   ```bash
+   claude mcp add --scope user llm-council -- uv run --directory /path/to/llm-council2 python -m backend.mcp_server
+   ```
+
+   For Claude Desktop, add the same command under `mcpServers` in `claude_desktop_config.json`.
+   The app must be running (`./start-prod.sh`). Set `COUNCIL_URL` if it is not on `http://127.0.0.1:8001`.
+
+2. In the web UI open **Missions**, enter the final goal and done criteria, and start. The council drafts the first task.
+3. Press **Claude Connect** (copies a start prompt) and paste it into Claude Code / Desktop in the project to work on.
+4. The agent loops `council_poll` -> work -> `council_report`. Every deliberation is saved as a normal conversation (**Open deliberations**). The loop ends on DONE, on the iteration limit, when you press Stop, or when the council is blocked and asks you something.

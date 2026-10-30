@@ -16,6 +16,22 @@ const API_BASE =
   (import.meta.env.DEV ? 'http://localhost:8001' : '');
 
 /**
+ * POST to a mission route and return the mission it answers with.
+ */
+async function postMission(path, body) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.detail || 'The mission request failed');
+  }
+  return response.json();
+}
+
+/**
  * Read a Server-Sent Events response and hand each event to `onEvent`.
  */
 async function readEventStream(response, onEvent) {
@@ -187,6 +203,45 @@ export const api = {
       throw new Error(error?.detail || 'Failed to rename the conversation');
     }
     return response.json();
+  },
+
+  /**
+   * Missions: a goal pursued in a loop between the council and a coding agent.
+   */
+  async listMissions() {
+    const response = await fetch(`${API_BASE}/api/missions`);
+    if (!response.ok) throw new Error('Failed to list missions');
+    return response.json();
+  },
+
+  async getMission(missionId) {
+    const response = await fetch(`${API_BASE}/api/missions/${missionId}`);
+    if (!response.ok) throw new Error('Failed to load the mission');
+    return response.json();
+  },
+
+  async createMission(goal, criteria, maxIterations) {
+    return postMission('/api/missions', {
+      goal,
+      criteria,
+      max_iterations: maxIterations,
+    });
+  },
+
+  /** Answer a blocked council (or push a note) as the human. */
+  async replyToMission(missionId, text) {
+    return postMission(`/api/missions/${missionId}/report`, {
+      report: text,
+      from_human: true,
+    });
+  },
+
+  async retryMission(missionId) {
+    return postMission(`/api/missions/${missionId}/retry`);
+  },
+
+  async stopMission(missionId) {
+    return postMission(`/api/missions/${missionId}/stop`);
   },
 
   /**

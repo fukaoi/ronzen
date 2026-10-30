@@ -79,6 +79,9 @@
 
 .conversation-item {
   position: relative;
+  /* overflow: hidden lets a flex item shrink below its content, which
+     clipped the bottom row of the card */
+  flex-shrink: 0;
   padding: 14px 16px 14px 22px;
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -204,16 +207,88 @@
   gap: 8px;
 }
 
-.conversation-edit-link {
+/* A small round pencil that appears on hover or focus, so the cards stay
+   quiet; on touch screens there is no hover, so it is always shown */
+.conversation-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
   padding: 0;
-  font: inherit;
-  color: var(--accent);
-  background: none;
+  color: var(--text-muted);
+  background: var(--bg);
   border: none;
+  border-radius: 50%;
+  box-shadow: var(--nm-raised-sm);
   cursor: pointer;
-  text-decoration: underline;
+  opacity: 0;
+  transition: opacity var(--ease), color var(--ease), box-shadow var(--ease);
 }
 
-.conversation-edit-link:hover {
-  opacity: 0.7;
+.conversation-item:hover .conversation-edit-btn,
+.conversation-edit-btn:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .conversation-edit-btn {
+    opacity: 0.8;
+  }
+}
+
+.conversation-edit-btn:hover {
+  color: var(--accent);
+}
+
+.conversation-edit-btn:active {
+  box-shadow: var(--nm-inset-sm);
+}
+
+.conversation-edit-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.missions-btn {
+  width: 100%;
+  padding: 13px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  box-shadow: var(--nm-raised-sm);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  transition: box-shadow var(--ease), color var(--ease);
+}
+
+.missions-btn:hover {
+  color: var(--accent);
+}
+
+.missions-btn.active {
+  box-shadow: var(--nm-inset-sm);
+  color: var(--accent);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand .logo {
+  flex-shrink: 0;
+  filter: drop-shadow(2px 3px 5px rgba(93, 74, 222, 0.35));
+}
+
+.new-conversation-btn,
+.missions-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }

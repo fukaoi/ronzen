@@ -6,7 +6,7 @@
   background: linear-gradient(90deg, var(--c-violet), var(--c-pink));
 }
 
-.stage3 .stage-title::before {
+.stage3 .stage-badge {
   background: var(--accent-gradient);
   box-shadow: var(--nm-accent);
   color: #fff;

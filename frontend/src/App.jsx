@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
+import MissionPanel from './components/MissionPanel';
 import { api } from './api';
 import './App.css';
 
 function App() {
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
+  // 'chat' shows the selected conversation, 'missions' the mission loop
+  const [view, setView] = useState('chat');
 
   // Conversations are kept by id rather than as a single "current" object.
   // A council run streams its stages into the conversation it belongs to, and
@@ -81,6 +84,7 @@ function App() {
       ]);
       setConversationsById((prev) => ({ ...prev, [newConv.id]: newConv }));
       setCurrentConversationId(newConv.id);
+      setView('chat');
     } catch (error) {
       console.error('Failed to create conversation:', error);
     }
@@ -88,6 +92,14 @@ function App() {
 
   const handleSelectConversation = (id) => {
     setCurrentConversationId(id);
+    setView('chat');
+  };
+
+  // A mission's deliberations live in an ordinary conversation
+  const handleOpenMissionConversation = async (id) => {
+    await loadConversations();
+    setCurrentConversationId(id);
+    setView('chat');
   };
 
   /**
@@ -429,6 +441,8 @@ function App() {
         streamingId={streamingId}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
+        view={view}
+        onShowMissions={() => setView('missions')}
         onRenameConversation={async (id, title) => {
           try {
             await api.renameConversation(id, title);
@@ -438,6 +452,9 @@ function App() {
           }
         }}
       />
+      {view === 'missions' ? (
+        <MissionPanel onOpenConversation={handleOpenMissionConversation} />
+      ) : (
       <ChatInterface
         conversation={currentConversation}
         onSendMessage={handleSendMessage}
@@ -448,6 +465,7 @@ function App() {
         onHandOff={handleHandOff}
         initialAttachments={pendingAttachments[currentConversationId]}
       />
+      )}
     </div>
   );
 }

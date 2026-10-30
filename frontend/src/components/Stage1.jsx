@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import ModelIcon from './ModelIcon';
+import StageBadge from './StageBadge';
 import { shortName } from '../models';
 import './Stage1.css';
 
@@ -13,7 +14,10 @@ export default function Stage1({ responses }) {
 
   return (
     <div className="stage stage1">
-      <h3 className="stage-title">Stage 1: Individual Responses</h3>
+      <h3 className="stage-title">
+        <StageBadge stage={1} />
+        Stage 1: Individual Responses
+      </h3>
 
       <div className="tabs">
         {responses.map((resp, index) => (

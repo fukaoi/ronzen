@@ -500,3 +500,64 @@ a.file-chip:hover {
   color: #d9566b;
   font-size: 12px;
 }
+
+/* --- Stage progress --- */
+
+.stage-loader-badge .stage-badge {
+  animation: badge-pulse 1.4s ease-in-out infinite;
+}
+
+.loading-dots {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: -6px;
+}
+
+.loading-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--stage-color, var(--accent));
+  animation: dot-bounce 1.2s ease-in-out infinite;
+}
+
+.loading-dots i:nth-child(2) { animation-delay: 0.15s; }
+.loading-dots i:nth-child(3) { animation-delay: 0.3s; }
+
+/* Logo "typing": the three dots in the front bubble pulse in turn */
+.logo.typing {
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.logo.typing .logo-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: logo-type 1.2s ease-in-out infinite;
+}
+
+.logo.typing .logo-dot:nth-child(2) { animation-delay: 0.15s; }
+.logo.typing .logo-dot:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes logo-type {
+  0%, 60%, 100% { transform: translateY(0) scale(1); opacity: 0.45; }
+  30% { transform: translateY(-1.6px) scale(1.25); opacity: 1; }
+}
+
+@keyframes badge-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.14); }
+}
+
+@keyframes dot-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-5px); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-loader-badge .stage-badge,
+  .loading-dots i,
+  .logo.typing .logo-dot {
+    animation: none;
+  }
+}
