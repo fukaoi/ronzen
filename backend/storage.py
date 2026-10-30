@@ -205,6 +205,76 @@ def add_assistant_message(
     save_conversation(conversation)
 
 
+def remove_last_turn(
+    conversation_id: str,
+    keep_attachments: bool = False
+) -> Optional[Dict[str, Any]]:
+    """
+    Drop the last user message and the answer that followed it.
+
+    Truncating at the last user message removes its assistant message too,
+    which is what both "delete" and "edit" need: every later turn was produced
+    with this one in its context, so leaving them would strand them.
+
+    Args:
+        conversation_id: Conversation identifier
+        keep_attachments: Leave the message's uploads on disk. The edit flow
+            needs this, because it puts them straight back in the composer.
+
+    Returns:
+        The removed user message, or None if there was nothing to remove
+    """
+    conversation = get_conversation(conversation_id)
+    if conversation is None:
+        raise ValueError(f"Conversation {conversation_id} not found")
+
+    messages = conversation["messages"]
+    last_user = next(
+        (
+            index
+            for index in range(len(messages) - 1, -1, -1)
+            if messages[index].get("role") == "user"
+        ),
+        None,
+    )
+    if last_user is None:
+        return None
+
+    removed = messages[last_user]
+    conversation["messages"] = messages[:last_user]
+    save_conversation(conversation)
+
+    if not keep_attachments:
+        delete_uploads(attachment_filenames(removed))
+
+    return removed
+
+
+def attachment_filenames(message: Dict[str, Any]) -> List[str]:
+    """Every upload referenced by a user message, images and text files."""
+    filenames = list(message.get("images", []))
+    filenames.extend(
+        entry["filename"]
+        for entry in message.get("files", [])
+        if isinstance(entry, dict) and entry.get("filename")
+    )
+    return filenames
+
+
+def delete_uploads(filenames: List[str]):
+    """
+    Remove uploads that nothing points at any more.
+
+    Each upload is stored under a fresh uuid even when the same file is
+    attached twice, so no other message can be referring to these.
+    """
+    for filename in filenames:
+        try:
+            os.remove(get_upload_path(filename))
+        except OSError:
+            pass
+
+
 def update_conversation_title(conversation_id: str, title: str):
     """
     Update the title of a conversation.
@@ -374,6 +444,16 @@ def _save_text(payload: bytes, name: str) -> Dict[str, Any]:
         "mime_type": "text/plain",
         "size": len(payload),
     }
+
+
+def save_text_attachment(text: str, name: str) -> Dict[str, Any]:
+    """
+    Store text that the app itself produced as an attachment.
+
+    Used for carrying a conversation over to a fresh one, where the text comes
+    from an earlier answer rather than from a file the user picked.
+    """
+    return _save_text(text.encode('utf-8'), name)
 
 
 def read_text_file(filename: str) -> Optional[str]:

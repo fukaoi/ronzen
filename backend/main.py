@@ -21,6 +21,7 @@ from .config import (
     EXTRA_ALLOWED_ORIGINS,
     RATE_LIMIT_PER_MINUTE,
     MAX_TEXT_BYTES_PER_MESSAGE,
+    CONTEXT_WARNING_CHARS,
 )
 from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings, build_user_content
 
@@ -47,6 +48,72 @@ app.add_middleware(
 
 # Recent council runs per client, for the rate limit below
 _recent_runs: Dict[str, Deque[float]] = defaultdict(deque)
+
+class CouncilRun:
+    """
+    A council run that outlives the request that started it.
+
+    The run owns the work and the saving; a request only watches it. That is
+    what makes a reload survivable: closing the page drops the viewer, not the
+    deliberation, and the answer is still written when it finishes.
+    """
+
+    def __init__(self, conversation_id: str):
+        self.conversation_id = conversation_id
+        self.events: List[Dict[str, Any]] = []
+        self.done = False
+        self.task: Optional[asyncio.Task] = None
+        # Replaced on every emit, so a watcher that captured the previous one
+        # is woken even if the event lands while it is between checks
+        self._next = asyncio.Event()
+
+    def emit(self, event: Dict[str, Any]):
+        self.events.append(event)
+        waiting, self._next = self._next, asyncio.Event()
+        waiting.set()
+
+    def finish(self):
+        self.done = True
+        waiting, self._next = self._next, asyncio.Event()
+        waiting.set()
+
+    async def watch(self):
+        """Yield every event from the beginning, then follow until it ends."""
+        cursor = 0
+        while True:
+            waiting = self._next
+            while cursor < len(self.events):
+                yield self.events[cursor]
+                cursor += 1
+            if self.done:
+                return
+            await waiting.wait()
+
+
+# Council runs in flight, by conversation. Also the edit guard: saving an
+# answer is a read-modify-write of the conversation file, so editing the last
+# turn meanwhile would be silently overwritten when the run finishes.
+_active_runs: Dict[str, CouncilRun] = {}
+
+
+def sse(event: Dict[str, Any]) -> str:
+    """Format one event for the wire."""
+    return f"data: {json.dumps(event)}\n\n"
+
+
+def sse_response(generator) -> StreamingResponse:
+    """A Server-Sent Events response with the headers proxies need."""
+    return StreamingResponse(
+        generator,
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            # Tell intermediate proxies (cloudflared, nginx) to pass each
+            # stage through as it is produced instead of buffering the stream
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 def enforce_rate_limit(request: Request):
@@ -121,6 +188,7 @@ class ConversationMetadata(BaseModel):
     created_at: str
     title: str
     message_count: int
+    running: bool = False
 
 
 class Conversation(BaseModel):
@@ -129,6 +197,17 @@ class Conversation(BaseModel):
     created_at: str
     title: str
     messages: List[Dict[str, Any]]
+    running: bool = False
+    # Characters of history the next question will carry, and whether that is
+    # now large enough to be worth starting fresh
+    context_chars: int = 0
+    context_heavy: bool = False
+
+
+class HandoffResult(BaseModel):
+    """A fresh conversation, plus the summary to open it with."""
+    conversation: Conversation
+    attachment: UploadedFile
 
 
 def resolve_images(filenames: List[str]) -> List[str]:
@@ -223,6 +302,79 @@ def build_history_messages(conversation: Dict[str, Any]) -> List[Dict[str, Any]]
     return history
 
 
+def conversation_context_size(conversation: Dict[str, Any]) -> int:
+    """
+    Characters of history the next question in this conversation will carry.
+
+    Counts exactly what build_history_messages sends: the questions with their
+    text attachments inlined, and the chairman's answers. Images are left out,
+    since their cost does not track their length.
+    """
+    total = 0
+
+    for message in conversation.get("messages", []):
+        if message.get("role") == "user":
+            total += len(message.get("content", ""))
+            for filename in message_attachments(message):
+                content = storage.read_text_file(filename)
+                if content:
+                    total += len(content)
+        else:
+            total += len((message.get("stage3") or {}).get("response", ""))
+
+    return total
+
+
+def with_context_size(conversation: Dict[str, Any]) -> Dict[str, Any]:
+    """Annotate a conversation with how much history it now carries."""
+    size = conversation_context_size(conversation)
+    return {
+        **conversation,
+        "context_chars": size,
+        "context_heavy": size >= CONTEXT_WARNING_CHARS,
+    }
+
+
+def build_handoff_summary(conversation: Dict[str, Any]) -> Optional[str]:
+    """
+    The part of a conversation worth carrying into a fresh one.
+
+    The last question and the council's answer to it: enough to pick the
+    thread back up, without dragging the whole history along at seven times
+    its size.
+    """
+    messages = conversation.get("messages", [])
+
+    answer_at = next(
+        (
+            index
+            for index in range(len(messages) - 1, -1, -1)
+            if messages[index].get("role") == "assistant"
+            and (messages[index].get("stage3") or {}).get("response")
+        ),
+        None,
+    )
+    if answer_at is None:
+        return None
+
+    question = next(
+        (
+            messages[index].get("content", "")
+            for index in range(answer_at - 1, -1, -1)
+            if messages[index].get("role") == "user"
+        ),
+        "",
+    )
+    answer = messages[answer_at]["stage3"]["response"]
+    title = conversation.get("title", "an earlier conversation")
+
+    return (
+        f"# Carried over from: {title}\n\n"
+        f"## The question that was asked\n\n{question}\n\n"
+        f"## What the council concluded\n\n{answer}\n"
+    )
+
+
 def validate_message_request(request: SendMessageRequest):
     """Reject a message that has neither text nor attachments."""
     if not request.content.strip() and not request.images and not request.files:
@@ -287,10 +439,80 @@ async def get_upload(filename: str):
     )
 
 
+@app.delete(
+    "/api/conversations/{conversation_id}/messages/last",
+    response_model=Conversation,
+)
+async def delete_last_turn(conversation_id: str, keep_attachments: bool = False):
+    """
+    Remove the last question and the answer that followed it.
+
+    Both buttons land here. Editing is the same removal, only with the
+    uploads left in place so the composer can offer them again: the council
+    has to run from scratch either way, so there is nothing to keep.
+    """
+    conversation = storage.get_conversation(conversation_id)
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    if conversation_id in _active_runs:
+        raise HTTPException(
+            status_code=409,
+            detail="This conversation is still being answered. Wait for it to finish.",
+        )
+
+    removed = storage.remove_last_turn(conversation_id, keep_attachments)
+    if removed is None:
+        raise HTTPException(status_code=400, detail="There is no message to remove")
+
+    return with_context_size(storage.get_conversation(conversation_id))
+
+
+@app.post(
+    "/api/conversations/{conversation_id}/handoff",
+    response_model=HandoffResult,
+)
+async def hand_off_conversation(conversation_id: str):
+    """
+    Start a fresh conversation carrying this one's conclusion.
+
+    The new conversation opens with the last question and answer attached as
+    a file, so the thread continues from a summary instead of replaying the
+    whole history to every council member on every question.
+    """
+    source = storage.get_conversation(conversation_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    summary = build_handoff_summary(source)
+    if summary is None:
+        raise HTTPException(
+            status_code=400,
+            detail="This conversation has no answer yet to carry over",
+        )
+
+    new_conversation = storage.create_conversation(str(uuid.uuid4()))
+    saved = storage.save_text_attachment(summary, "carried-over-context.md")
+
+    return {
+        "conversation": with_context_size(new_conversation),
+        "attachment": {
+            "filename": saved["filename"],
+            "name": saved["name"],
+            "kind": saved["kind"],
+            "size": saved["size"],
+            "url": f"/api/uploads/{saved['filename']}",
+        },
+    }
+
+
 @app.get("/api/conversations", response_model=List[ConversationMetadata])
 async def list_conversations():
     """List all conversations (metadata only)."""
-    return storage.list_conversations()
+    return [
+        {**conversation, "running": conversation["id"] in _active_runs}
+        for conversation in storage.list_conversations()
+    ]
 
 
 @app.post("/api/conversations", response_model=Conversation)
@@ -307,7 +529,10 @@ async def get_conversation(conversation_id: str):
     conversation = storage.get_conversation(conversation_id)
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    return conversation
+    return {
+        **with_context_size(conversation),
+        "running": conversation_id in _active_runs,
+    }
 
 
 @app.post(
@@ -347,20 +572,24 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
         storage.update_conversation_title(conversation_id, title)
 
     # Run the 3-stage council process
-    stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
-        request.content,
-        images,
-        history,
-        files
-    )
+    _active_runs[conversation_id] = CouncilRun(conversation_id)
+    try:
+        stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
+            request.content,
+            images,
+            history,
+            files
+        )
 
-    # Add assistant message with all stages
-    storage.add_assistant_message(
-        conversation_id,
-        stage1_results,
-        stage2_results,
-        stage3_result
-    )
+        # Add assistant message with all stages
+        storage.add_assistant_message(
+            conversation_id,
+            stage1_results,
+            stage2_results,
+            stage3_result
+        )
+    finally:
+        _active_runs.pop(conversation_id, None)
 
     # Return the complete response with metadata
     return {
@@ -395,9 +624,18 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
     images = resolve_images(request.images)
     files = resolve_files(request.files)
 
-    async def event_generator():
+    run = CouncilRun(conversation_id)
+    _active_runs[conversation_id] = run
+
+    async def deliberate():
+        """
+        Carry the run to the end and save it, with or without an audience.
+
+        Nothing in here yields to the client: the request only watches `run`,
+        so a reload, a dropped mobile connection or a closed tab cannot take
+        the answer down with it.
+        """
         try:
-            # Add user message
             storage.add_user_message(
                 conversation_id, request.content, request.images, request.files
             )
@@ -412,26 +650,33 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
                 )
 
             # Stage 1: Collect responses
-            yield f"data: {json.dumps({'type': 'stage1_start'})}\n\n"
+            run.emit({'type': 'stage1_start'})
             stage1_results = await stage1_collect_responses(request.content, images, history, files)
-            yield f"data: {json.dumps({'type': 'stage1_complete', 'data': stage1_results})}\n\n"
+            run.emit({'type': 'stage1_complete', 'data': stage1_results})
 
             # Stage 2: Collect rankings
-            yield f"data: {json.dumps({'type': 'stage2_start'})}\n\n"
+            run.emit({'type': 'stage2_start'})
             stage2_results, label_to_model = await stage2_collect_rankings(request.content, stage1_results, images, history, files)
             aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
-            yield f"data: {json.dumps({'type': 'stage2_complete', 'data': stage2_results, 'metadata': {'label_to_model': label_to_model, 'aggregate_rankings': aggregate_rankings}})}\n\n"
+            run.emit({
+                'type': 'stage2_complete',
+                'data': stage2_results,
+                'metadata': {
+                    'label_to_model': label_to_model,
+                    'aggregate_rankings': aggregate_rankings,
+                },
+            })
 
             # Stage 3: Synthesize final answer
-            yield f"data: {json.dumps({'type': 'stage3_start'})}\n\n"
+            run.emit({'type': 'stage3_start'})
             stage3_result = await stage3_synthesize_final(request.content, stage1_results, stage2_results, images, history, files)
-            yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_result})}\n\n"
+            run.emit({'type': 'stage3_complete', 'data': stage3_result})
 
             # Wait for title generation if it was started
             if title_task:
                 title = await title_task
                 storage.update_conversation_title(conversation_id, title)
-                yield f"data: {json.dumps({'type': 'title_complete', 'data': {'title': title}})}\n\n"
+                run.emit({'type': 'title_complete', 'data': {'title': title}})
 
             # Save complete assistant message
             storage.add_assistant_message(
@@ -441,24 +686,47 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
                 stage3_result
             )
 
-            # Send completion event
-            yield f"data: {json.dumps({'type': 'complete'})}\n\n"
+            # Released before the client is told, so that the conversation
+            # list it reloads on 'complete' no longer reports this as running
+            _active_runs.pop(conversation_id, None)
+            run.emit({'type': 'complete'})
 
         except Exception as e:
-            # Send error event
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            run.emit({'type': 'error', 'message': str(e)})
 
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            # Tell intermediate proxies (cloudflared, nginx) to pass each
-            # stage through as it is produced instead of buffering the stream
-            "X-Accel-Buffering": "no",
-        }
-    )
+        finally:
+            _active_runs.pop(conversation_id, None)
+            run.finish()
+
+    # Held so the garbage collector cannot take the run mid-deliberation
+    run.task = asyncio.create_task(deliberate())
+
+    async def watch():
+        async for event in run.watch():
+            yield sse(event)
+
+    return sse_response(watch())
+
+
+@app.get("/api/conversations/{conversation_id}/stream")
+async def follow_council_run(conversation_id: str):
+    """
+    Attach to a council run that is already going.
+
+    A reloaded page lands here and picks the deliberation back up from the
+    start, rather than showing a question with no answer under it.
+    """
+    run = _active_runs.get(conversation_id)
+    if run is None:
+        raise HTTPException(
+            status_code=404, detail="No council run is in progress here"
+        )
+
+    async def watch():
+        async for event in run.watch():
+            yield sse(event)
+
+    return sse_response(watch())
 
 
 # Serve the built frontend from this same app, when it has been built.

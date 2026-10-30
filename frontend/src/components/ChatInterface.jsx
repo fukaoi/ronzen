@@ -51,6 +51,10 @@ export default function ChatInterface({
   onSendMessage,
   isLoading,
   busyElsewhere = false,
+  onEditLastTurn,
+  onDeleteLastTurn,
+  onHandOff,
+  initialAttachments,
 }) {
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState([]);
@@ -68,10 +72,11 @@ export default function ChatInterface({
     scrollToBottom();
   }, [conversation]);
 
-  // Clear the composer when switching conversations
+  // Clear the composer when switching conversations. A conversation just
+  // created by a hand-off arrives with its carried-over summary ready to send.
   useEffect(() => {
     setInput('');
-    setAttachments([]);
+    setAttachments(initialAttachments ?? []);
     setUploadError(null);
   }, [conversation?.id]);
 
@@ -138,6 +143,51 @@ export default function ChatInterface({
   const attachedImages = attachments.filter((a) => a.kind === 'image');
   const attachedFiles = attachments.filter((a) => a.kind !== 'image');
 
+  // Only the latest question can be taken back: anything earlier was the
+  // context the later answers were written against.
+  const messages = conversation?.messages ?? [];
+  let lastUserIndex = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'user') {
+      lastUserIndex = i;
+      break;
+    }
+  }
+  const canAmendLastTurn =
+    lastUserIndex !== -1 && !isLoading && !busyElsewhere && !isUploading;
+
+  /**
+   * Take the last question back into the composer, attachments and all.
+   */
+  const handleEditLastTurn = async (message) => {
+    const removed = await onEditLastTurn?.();
+    if (!removed) return;
+
+    setInput(message.content || '');
+    setAttachments([
+      ...(message.images || []).map((filename) => ({
+        filename,
+        name: filename,
+        kind: 'image',
+      })),
+      ...(message.files || []).map((file) => ({
+        filename: file.filename,
+        name: file.name,
+        kind: 'text',
+      })),
+    ]);
+    setUploadError(null);
+  };
+
+  const handleDeleteLastTurn = async () => {
+    const confirmed = window.confirm(
+      'Delete the last question and its answer? This cannot be undone.'
+    );
+    if (confirmed) {
+      await onDeleteLastTurn?.();
+    }
+  };
+
   // One council run at a time: a second one would race the first for the
   // same rate limit and fan out another seven model calls.
   const canSend =
@@ -172,7 +222,7 @@ export default function ChatInterface({
     return (
       <div className="chat-interface">
         <div className="empty-state">
-          <h2>Welcome to LLM Council2</h2>
+          <h2>Welcome to LLM COUNCIL2</h2>
           <p>Create a new conversation to get started</p>
         </div>
       </div>
@@ -185,7 +235,7 @@ export default function ChatInterface({
         {conversation.messages.length === 0 ? (
           <div className="empty-state">
             <h2>Start a conversation</h2>
-            <p>Ask a question to consult the LLM Council2</p>
+            <p>Ask a question to consult the LLM COUNCIL2</p>
           </div>
         ) : (
           conversation.messages.map((msg, index) => (
@@ -233,10 +283,30 @@ export default function ChatInterface({
                       </div>
                     )}
                   </div>
+                  {index === lastUserIndex && canAmendLastTurn && (
+                    <div className="message-actions">
+                      <button
+                        type="button"
+                        className="message-action"
+                        onClick={() => handleEditLastTurn(msg)}
+                        title="Put this question back in the box to change it"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="message-action danger"
+                        onClick={handleDeleteLastTurn}
+                        title="Delete this question and its answer"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="assistant-message">
-                  <div className="message-label">LLM Council2</div>
+                  <div className="message-label">LLM COUNCIL2</div>
 
                   <CouncilRoster
                     members={msg.stage1?.map((resp) => resp.model)}
@@ -298,6 +368,37 @@ export default function ChatInterface({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
+        {conversation.context_chars > 0 && (
+          <div
+            className={`context-meter ${
+              conversation.context_heavy ? 'heavy' : ''
+            }`}
+          >
+            <span className="context-size">
+              History carried into every question:{' '}
+              <strong>
+                {conversation.context_chars.toLocaleString()} characters
+              </strong>
+            </span>
+            {conversation.context_heavy && (
+              <>
+                <span className="context-note">
+                  Each question replays this to every council member twice and
+                  to the chairman once, so it costs about seven times its size.
+                </span>
+                <button
+                  type="button"
+                  className="handoff-button"
+                  onClick={onHandOff}
+                  disabled={isLoading || busyElsewhere}
+                >
+                  Carry on in a new conversation
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
         {attachedImages.length > 0 && (
           <div className="attachment-previews">
             {attachedImages.map((image) => (
@@ -322,7 +423,9 @@ export default function ChatInterface({
               <div key={file.filename} className="file-chip">
                 <FileIcon />
                 <span className="file-chip-name">{file.name}</span>
-                <span className="file-chip-size">{formatSize(file.size)}</span>
+                {file.size != null && (
+                  <span className="file-chip-size">{formatSize(file.size)}</span>
+                )}
                 <button
                   type="button"
                   className="file-chip-remove"

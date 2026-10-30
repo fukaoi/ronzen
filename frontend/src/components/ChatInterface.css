@@ -81,6 +81,38 @@
   padding: 0;
 }
 
+/* Take-backs on the latest question */
+
+.message-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  padding-left: 4px;
+}
+
+.message-action {
+  padding: 5px 13px;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  color: var(--text-faint);
+  font-size: 11.5px;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: color var(--ease), box-shadow var(--ease);
+}
+
+.message-action:hover {
+  color: var(--accent);
+  box-shadow: var(--nm-raised-sm);
+}
+
+.message-action.danger:hover {
+  color: var(--c-rose);
+}
+
 .loading-indicator,
 .stage-loading {
   display: flex;
@@ -303,6 +335,74 @@
 .attachment-remove:hover {
   color: #e05a6b;
   box-shadow: var(--nm-inset-sm);
+}
+
+/* --- How much history this conversation carries --- */
+
+.context-meter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.context-meter strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.context-meter.heavy {
+  background: linear-gradient(
+    135deg,
+    rgba(242, 163, 12, 0.12),
+    rgba(244, 84, 111, 0.09)
+  );
+  box-shadow: var(--nm-inset-sm);
+  color: #9a6a0c;
+}
+
+.context-meter.heavy strong {
+  color: #8a5c00;
+}
+
+.context-note {
+  flex: 1 1 260px;
+  min-width: 0;
+  line-height: 1.5;
+}
+
+.handoff-button {
+  flex-shrink: 0;
+  padding: 9px 18px;
+  background: linear-gradient(135deg, var(--c-amber), var(--c-orange));
+  border: none;
+  border-radius: 999px;
+  box-shadow: 4px 5px 12px rgba(214, 150, 10, 0.4),
+    -3px -3px 9px var(--shadow-light);
+  color: #fff;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  transition: filter var(--ease), transform var(--ease);
+}
+
+.handoff-button:hover:not(:disabled) {
+  filter: saturate(1.15) brightness(1.06);
+}
+
+.handoff-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.handoff-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* --- Text file attachments --- */

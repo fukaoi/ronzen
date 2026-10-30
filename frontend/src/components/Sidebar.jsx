@@ -11,7 +11,7 @@ export default function Sidebar({
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <h1>LLM Council2</h1>
+        <h1>LLM COUNCIL2</h1>
         <button className="new-conversation-btn" onClick={onNewConversation}>
           + New Conversation
         </button>
@@ -33,7 +33,7 @@ export default function Sidebar({
                 {conv.title || 'New Conversation'}
               </div>
               <div className="conversation-meta">
-                {conv.id === streamingId ? (
+                {conv.id === streamingId || conv.running ? (
                   <span className="conversation-running">
                     <span className="running-dot"></span>
                     Consulting the council...

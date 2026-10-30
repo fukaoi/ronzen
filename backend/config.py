@@ -33,6 +33,12 @@ MAX_TEXT_BYTES_PER_MESSAGE = int(
     os.getenv("MAX_TEXT_BYTES_PER_MESSAGE", str(1024 * 1024))
 )
 
+# Characters of history above which a conversation is worth carrying over to
+# a fresh one. Every question replays the whole history to each council member
+# twice plus the chairman, so history costs seven times its own size; past
+# this point it outweighs the rest of a council run on its own.
+CONTEXT_WARNING_CHARS = int(os.getenv("CONTEXT_WARNING_CHARS", "20000"))
+
 # --- Server / network ---
 
 # Bind address. Loopback by default: when the app is published through a

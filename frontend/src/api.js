@@ -15,6 +15,50 @@ const API_BASE =
   import.meta.env.VITE_API_BASE ??
   (import.meta.env.DEV ? 'http://localhost:8001' : '');
 
+/**
+ * Read a Server-Sent Events response and hand each event to `onEvent`.
+ */
+async function readEventStream(response, onEvent) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+
+  // A network chunk is not an SSE event: it can split a multi-byte
+  // character, carry half an event, or carry several. Decode in streaming
+  // mode and only hand over whole events, separated by a blank line.
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    let boundary = buffer.indexOf('\n\n');
+    while (boundary !== -1) {
+      const rawEvent = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+
+      for (const line of rawEvent.split('\n')) {
+        if (!line.startsWith('data: ')) continue;
+
+        let event;
+        try {
+          event = JSON.parse(line.slice(6));
+        } catch (e) {
+          console.error('Failed to parse SSE event:', e);
+          continue;
+        }
+
+        // Deliberately outside the try above: a bug in the handler is not
+        // a parse failure, and swallowing it here would strand the caller
+        onEvent(event.type, event);
+      }
+
+      boundary = buffer.indexOf('\n\n');
+    }
+  }
+}
+
 export const api = {
   /**
    * List all conversations.
@@ -86,6 +130,64 @@ export const api = {
   },
 
   /**
+   * Start a fresh conversation carrying this one's conclusion.
+   * @param {string} conversationId - The conversation to carry over
+   * @returns {Promise<{conversation: object, attachment: object}>}
+   */
+  async handOff(conversationId) {
+    const response = await fetch(
+      `${API_BASE}/api/conversations/${conversationId}/handoff`,
+      { method: 'POST' }
+    );
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      throw new Error(error?.detail || 'Failed to carry the conversation over');
+    }
+    return response.json();
+  },
+
+  /**
+   * Follow a council run that is already in progress.
+   *
+   * Used after a reload: the run belongs to the server, so the page can pick
+   * it back up from the first stage instead of showing an unanswered question.
+   *
+   * @param {string} conversationId - The conversation ID
+   * @param {function} onEvent - Callback for each event: (eventType, data) => void
+   * @returns {Promise<boolean>} false when no run is in progress
+   */
+  async followRun(conversationId, onEvent) {
+    const response = await fetch(
+      `${API_BASE}/api/conversations/${conversationId}/stream`
+    );
+
+    if (response.status === 404) return false;
+    if (!response.ok) throw new Error('Failed to follow the council run');
+
+    await readEventStream(response, onEvent);
+    return true;
+  },
+
+  /**
+   * Remove the last question and the answer that followed it.
+   * @param {string} conversationId - The conversation ID
+   * @param {boolean} keepAttachments - Leave the uploads on disk, for editing
+   * @returns {Promise<object>} The conversation as it now stands
+   */
+  async deleteLastTurn(conversationId, keepAttachments = false) {
+    const response = await fetch(
+      `${API_BASE}/api/conversations/${conversationId}/messages/last` +
+        `?keep_attachments=${keepAttachments}`,
+      { method: 'DELETE' }
+    );
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      throw new Error(error?.detail || 'Failed to remove the last message');
+    }
+    return response.json();
+  },
+
+  /**
    * Send a message in a conversation.
    * @param {string} conversationId - The conversation ID
    * @param {string} content - The message content
@@ -138,43 +240,6 @@ export const api = {
       throw new Error('Failed to send message');
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-
-    // A network chunk is not an SSE event: it can split a multi-byte
-    // character, carry half an event, or carry several. Decode in streaming
-    // mode and only hand over whole events, separated by a blank line.
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-
-      let boundary = buffer.indexOf('\n\n');
-      while (boundary !== -1) {
-        const rawEvent = buffer.slice(0, boundary);
-        buffer = buffer.slice(boundary + 2);
-
-        for (const line of rawEvent.split('\n')) {
-          if (!line.startsWith('data: ')) continue;
-
-          let event;
-          try {
-            event = JSON.parse(line.slice(6));
-          } catch (e) {
-            console.error('Failed to parse SSE event:', e);
-            continue;
-          }
-
-          // Deliberately outside the try above: a bug in the handler is not
-          // a parse failure, and swallowing it here would strand the caller
-          onEvent(event.type, event);
-        }
-
-        boundary = buffer.indexOf('\n\n');
-      }
-    }
+    await readEventStream(response, onEvent);
   },
 };
