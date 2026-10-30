@@ -9,12 +9,13 @@ from typing import List, Dict, Any, Optional, Deque
 from collections import defaultdict, deque
 from pathlib import Path
 import os
+import re
 import time
 import uuid
 import json
 import asyncio
 
-from . import storage, missions
+from . import storage, missions, instructions
 from .config import (
     HOST,
     PORT,
@@ -340,6 +341,34 @@ def with_context_size(conversation: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+PAGE_SUFFIX = re.compile(r"^(.*?)\s*Page\s*(\d+)\s*$", re.IGNORECASE)
+DEFAULT_TITLE = "New Conversation"
+
+
+def split_page_title(title: str) -> tuple:
+    """Split "Topic Page 3" into ("Topic", 3); a title without a page is page 1."""
+    match = PAGE_SUFFIX.match(title.strip())
+    if match and match.group(1).strip():
+        return match.group(1).strip(), int(match.group(2))
+    return title.strip(), 1
+
+
+def next_page_title(source_title: str) -> str:
+    """
+    Title for a carried-over conversation: the same topic, the next page.
+
+    The number is one past the highest page of that topic already in use, so
+    carrying the same conversation over twice never makes two "Page 2".
+    """
+    base, page = split_page_title(source_title or DEFAULT_TITLE)
+    highest = page
+    for conversation in storage.list_conversations():
+        other_base, other_page = split_page_title(conversation.get("title", ""))
+        if other_base == base:
+            highest = max(highest, other_page)
+    return f"{base} Page {highest + 1}"
+
+
 def build_handoff_summary(conversation: Dict[str, Any]) -> Optional[str]:
     """
     The part of a conversation worth carrying into a fresh one.
@@ -497,6 +526,8 @@ async def hand_off_conversation(conversation_id: str):
         )
 
     new_conversation = storage.create_conversation(str(uuid.uuid4()))
+    new_conversation["title"] = next_page_title(source.get("title", ""))
+    storage.update_conversation_title(new_conversation["id"], new_conversation["title"])
     saved = storage.save_text_attachment(summary, "carried-over-context.md")
 
     return {
@@ -596,7 +627,10 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
         raise HTTPException(status_code=404, detail="Conversation not found")
 
     # Check if this is the first message
-    is_first_message = len(conversation["messages"]) == 0
+    is_first_message = (
+        len(conversation["messages"]) == 0
+        and conversation.get("title", DEFAULT_TITLE) == DEFAULT_TITLE
+    )
 
     # Capture the earlier turns before this message is appended
     history = build_history_messages(conversation)
@@ -661,7 +695,10 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
         raise HTTPException(status_code=404, detail="Conversation not found")
 
     # Check if this is the first message
-    is_first_message = len(conversation["messages"]) == 0
+    is_first_message = (
+        len(conversation["messages"]) == 0
+        and conversation.get("title", DEFAULT_TITLE) == DEFAULT_TITLE
+    )
 
     # Capture the earlier turns before this message is appended
     history = build_history_messages(conversation)
@@ -778,6 +815,23 @@ async def follow_council_run(conversation_id: str):
             yield sse(event)
 
     return sse_response(watch())
+
+
+class InstructionsRequest(BaseModel):
+    """Standing instructions for the council."""
+    text: str
+
+
+@app.get("/api/instructions")
+async def get_instructions():
+    """The standing instructions every council model receives."""
+    return {"text": instructions.get_instructions()}
+
+
+@app.put("/api/instructions")
+async def put_instructions(request: InstructionsRequest):
+    """Replace the standing instructions; they apply from the next question."""
+    return {"text": instructions.set_instructions(request.text)}
 
 
 # --- Missions -----------------------------------------------------------

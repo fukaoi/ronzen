@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import MissionPanel from './components/MissionPanel';
+import InstructionsDialog from './components/InstructionsDialog';
 import { api } from './api';
 import './App.css';
 
@@ -10,6 +11,7 @@ function App() {
   const [currentConversationId, setCurrentConversationId] = useState(null);
   // 'chat' shows the selected conversation, 'missions' the mission loop
   const [view, setView] = useState('chat');
+  const [showRules, setShowRules] = useState(false);
 
   // Conversations are kept by id rather than as a single "current" object.
   // A council run streams its stages into the conversation it belongs to, and
@@ -443,6 +445,7 @@ function App() {
         onNewConversation={handleNewConversation}
         view={view}
         onShowMissions={() => setView('missions')}
+        onShowRules={() => setShowRules(true)}
         onRenameConversation={async (id, title) => {
           try {
             await api.renameConversation(id, title);
@@ -465,6 +468,9 @@ function App() {
         onHandOff={handleHandOff}
         initialAttachments={pendingAttachments[currentConversationId]}
       />
+      )}
+      {showRules && (
+        <InstructionsDialog onClose={() => setShowRules(false)} />
       )}
     </div>
   );

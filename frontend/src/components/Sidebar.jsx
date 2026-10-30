@@ -12,6 +12,7 @@ export default function Sidebar({
   onRenameConversation,
   view,
   onShowMissions,
+  onShowRules,
 }) {
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState('');
@@ -46,6 +47,9 @@ export default function Sidebar({
         >
           <Landmark size={15} />
           Missions
+        </button>
+        <button className="missions-btn" onClick={onShowRules}>
+          Council Rules
         </button>
       </div>
 

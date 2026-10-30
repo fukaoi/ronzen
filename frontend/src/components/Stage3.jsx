@@ -5,34 +5,14 @@ import StageBadge from './StageBadge';
 import { shortName } from '../models';
 import './Stage3.css';
 
-// Strip the markdown syntax so the text view (and its copy) is plain prose.
-function toPlainText(markdown) {
-  return markdown
-    .replace(/```[\w-]*\n?([\s\S]*?)```/g, '$1')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
-    .replace(/^\s{0,3}>\s?/gm, '')
-    .replace(/^\s{0,3}(?:-{3,}|\*{3,}|_{3,})\s*$/gm, '')
-    .replace(/^(\s*)[-*+]\s+/gm, '$1• ')
-    .replace(/(\*\*|__)(.*?)\1/g, '$2')
-    .replace(/(\*|_)(.*?)\1/g, '$2')
-    .replace(/~~(.*?)~~/g, '$1')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
 export default function Stage3({ finalResponse }) {
-  const [viewMode, setViewMode] = useState('markdown');
   const [copied, setCopied] = useState(false);
 
   if (!finalResponse) {
     return null;
   }
 
-  const plainText = toPlainText(finalResponse.response);
-  const copyTarget = viewMode === 'markdown' ? finalResponse.response : plainText;
+  const copyTarget = finalResponse.response;
 
   const handleCopy = async () => {
     try {
@@ -72,34 +52,15 @@ export default function Stage3({ finalResponse }) {
           </div>
 
           <div className="final-actions">
-            <div className="view-toggle">
-              <button
-                className={`toggle-option ${viewMode === 'markdown' ? 'active' : ''}`}
-                onClick={() => setViewMode('markdown')}
-              >
-                Markdown
-              </button>
-              <button
-                className={`toggle-option ${viewMode === 'text' ? 'active' : ''}`}
-                onClick={() => setViewMode('text')}
-              >
-                Text
-              </button>
-            </div>
-
             <button className={`copy-button ${copied ? 'copied' : ''}`} onClick={handleCopy}>
               {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
         </div>
 
-        {viewMode === 'markdown' ? (
-          <div className="final-text markdown-content">
-            <ReactMarkdown>{finalResponse.response}</ReactMarkdown>
-          </div>
-        ) : (
-          <pre className="final-text final-plain">{plainText}</pre>
-        )}
+        <div className="final-text markdown-content">
+          <ReactMarkdown>{finalResponse.response}</ReactMarkdown>
+        </div>
       </div>
     </div>
   );

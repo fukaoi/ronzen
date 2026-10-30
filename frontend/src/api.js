@@ -206,6 +206,25 @@ export const api = {
   },
 
   /**
+   * Standing instructions every council model receives with each question.
+   */
+  async getInstructions() {
+    const response = await fetch(`${API_BASE}/api/instructions`);
+    if (!response.ok) throw new Error('Failed to load the rules');
+    return (await response.json()).text;
+  },
+
+  async saveInstructions(text) {
+    const response = await fetch(`${API_BASE}/api/instructions`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    if (!response.ok) throw new Error('Failed to save the rules');
+    return (await response.json()).text;
+  },
+
+  /**
    * Missions: a goal pursued in a loop between the council and a coding agent.
    */
   async listMissions() {

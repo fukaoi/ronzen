@@ -16,6 +16,13 @@ OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 # Data directory for conversation storage
 DATA_DIR = "data/conversations"
 
+# Standing instructions given to every council model on every question
+# (e.g. "keep answers short and simple"). Edited from the web UI, which saves
+# them to this file; the file is read on each question, so no restart is
+# needed.
+INSTRUCTIONS_FILE = os.getenv("COUNCIL_INSTRUCTIONS_FILE", "data/council_instructions.md")
+MAX_INSTRUCTIONS_CHARS = 4000
+
 # Data directory for missions (goal-driven loops with a coding agent)
 MISSIONS_DIR = "data/missions"
 

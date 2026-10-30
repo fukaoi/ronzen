@@ -45,7 +45,7 @@
   padding: 0;
 }
 
-/* --- Toolbar: view toggle + copy --- */
+/* --- Toolbar: copy --- */
 
 .final-toolbar {
   display: flex;
@@ -64,39 +64,6 @@
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.view-toggle {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--bg);
-  box-shadow: var(--nm-inset-sm);
-}
-
-.toggle-option {
-  padding: 6px 14px;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 12px;
-  font-family: inherit;
-  font-weight: 500;
-  transition: box-shadow var(--ease), color var(--ease);
-}
-
-.toggle-option:hover {
-  color: var(--text);
-}
-
-.toggle-option.active {
-  background: var(--bg);
-  box-shadow: var(--nm-raised-sm);
-  color: var(--c-violet);
-  font-weight: 600;
 }
 
 .copy-button {
@@ -128,14 +95,6 @@
 }
 
 /* Plain text view */
-
-.final-plain {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: inherit;
-  font-size: 15px;
-}
 
 .chairman-icon {
   display: inline-flex;

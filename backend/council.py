@@ -4,6 +4,7 @@ import asyncio
 from typing import List, Dict, Any, Optional, Tuple
 from .openrouter import query_models_parallel, query_model
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
+from .instructions import get_instructions
 
 
 def build_user_content(
@@ -82,7 +83,20 @@ def build_messages(
     Returns:
         List of message dicts ready to send to OpenRouter
     """
-    return list(history or []) + [
+    messages: List[Dict[str, Any]] = []
+
+    # The user's standing rules go first, as a system message, for every stage
+    instructions = get_instructions()
+    if instructions:
+        messages.append({
+            "role": "system",
+            "content": (
+                "Standing instructions from the user. Follow them in every "
+                "answer:\n" + instructions
+            ),
+        })
+
+    return messages + list(history or []) + [
         {"role": "user", "content": build_user_content(prompt, images, files)}
     ]
 
