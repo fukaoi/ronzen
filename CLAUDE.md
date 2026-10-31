@@ -37,13 +37,13 @@ LLM Council is a 3-stage deliberation system where multiple LLMs collaboratively
 **`storage.py`**
 - JSON-based conversation storage in `data/conversations/`
 - Each conversation: `{id, created_at, messages[]}`
-- Assistant messages contain: `{role, stage1, stage2, stage3}`
+- Assistant messages contain: `{role, stage1, stage2, stage3, mode}` (`mode` is `chairman` when stages 1 and 2 were skipped)
 - Note: metadata (label_to_model, aggregate_rankings) is NOT persisted to storage, only returned via API
 
 **`main.py`**
 - FastAPI app with CORS enabled for localhost:5173 and localhost:3000
-- POST `/api/conversations/{id}/message` returns metadata in addition to stages
-- Metadata includes: label_to_model mapping and aggregate_rankings
+- POST `/api/conversations/{id}/message/stream` streams the stages as server-sent events; `mode: "chairman"` skips stages 1 and 2 and only the chairman answers
+- The `stage2_complete` event carries metadata: label_to_model mapping and aggregate_rankings
 
 ### Frontend Structure (`frontend/src/`)
 
@@ -140,10 +140,6 @@ Models are hardcoded in `backend/config.py`. Chairman can be same or different f
 - Model performance analytics over time
 - Custom ranking criteria (not just accuracy/insight)
 - Support for reasoning models (o1, etc.) with special handling
-
-## Testing Notes
-
-Use `test_openrouter.py` to verify API connectivity and test different model identifiers before adding to council. The script tests both streaming and non-streaming modes.
 
 ## Data Flow Summary
 

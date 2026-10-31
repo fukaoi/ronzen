@@ -1,6 +1,81 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { Landmark, Target, Users, Terminal, Flag } from 'lucide-react';
 import { api } from '../api';
 import './MissionPanel.css';
+
+// A goal is a whole brief, often with headings and lists: the first line
+// stands in for it wherever a short name is needed
+function missionTitle(goal) {
+  const line = goal.split('\n').find((l) => l.trim()) || '';
+  const title = line.replace(/^[#>\s*-]+/, '').replace(/\*\*/g, '').trim();
+  return title.length > 80 ? `${title.slice(0, 77)}...` : title;
+}
+
+const INTRO_STEPS = [
+  {
+    Icon: Target,
+    title: 'Set a goal',
+    text: 'Say what should be true when the work is finished.',
+  },
+  {
+    Icon: Users,
+    title: 'The council plans',
+    text: 'Several models agree on the next task, one step at a time.',
+  },
+  {
+    Icon: Terminal,
+    title: 'Your agent does it',
+    text: 'Claude Code or Desktop runs the task and reports back.',
+  },
+  {
+    Icon: Flag,
+    title: 'Repeat until done',
+    text: 'The council reads each report and stops when the goal is reached.',
+  },
+];
+
+function MissionIntro() {
+  return (
+    <div className="mission-intro">
+      <div className="mission-intro-head">
+        <span className="mission-intro-badge">
+          <Landmark size={22} />
+        </span>
+        <div>
+          <h3>Hand the council a long job</h3>
+          <p>
+            Start a mission on the left, or pick an earlier one from the list.
+          </p>
+        </div>
+      </div>
+      <ol className="mission-intro-steps">
+        {INTRO_STEPS.map((step, i) => (
+          <li key={step.title}>
+            <span className="mission-intro-icon">
+              <step.Icon size={18} />
+            </span>
+            <div>
+              <div className="mission-intro-title">
+                <span className="mission-intro-num">{i + 1}</span>
+                {step.title}
+              </div>
+              <div className="mission-intro-text">{step.text}</div>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function MissionText({ children }) {
+  return (
+    <div className="mission-text mission-markdown markdown-content">
+      <ReactMarkdown>{children}</ReactMarkdown>
+    </div>
+  );
+}
 
 const STATUS_LABELS = {
   active: 'Active',
@@ -112,7 +187,7 @@ function stepRows(mission) {
   return rows;
 }
 
-export default function MissionPanel({ onOpenConversation }) {
+export default function MissionPanel() {
   const [missions, setMissions] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -244,7 +319,7 @@ export default function MissionPanel({ onOpenConversation }) {
               className={`mission-item ${m.id === selectedId ? 'active' : ''}`}
               onClick={() => setSelectedId(m.id)}
             >
-              <div className="mission-item-goal">{m.goal}</div>
+              <div className="mission-item-goal">{missionTitle(m.goal)}</div>
               <div className="mission-item-meta">
                 <span className={`mission-badge ${m.status}`}>
                   {m.step === 'running' ? 'Deliberating' : STATUS_LABELS[m.status]}
@@ -262,20 +337,22 @@ export default function MissionPanel({ onOpenConversation }) {
         {error && <div className="mission-error">{error}</div>}
 
         {!detail ? (
-          <div className="mission-placeholder">
-            Define a goal and start a mission, or pick one from the list.
-            The council writes each task; the coding agent does it and reports
-            back until the goal is reached.
-          </div>
+          <MissionIntro />
         ) : (
           <>
             <div className="mission-card">
               <div className="mission-title-row">
-                <h3>{detail.goal}</h3>
+                <h3>{missionTitle(detail.goal)}</h3>
                 <span className={`mission-badge ${detail.status}`}>
                   {STATUS_LABELS[detail.status]}
                 </span>
               </div>
+              {detail.goal.trim() !== missionTitle(detail.goal) && (
+                <details className="mission-goal">
+                  <summary>Full goal</summary>
+                  <MissionText>{detail.goal}</MissionText>
+                </details>
+              )}
               {detail.criteria && (
                 <p className="mission-criteria">Done when: {detail.criteria}</p>
               )}
@@ -291,11 +368,6 @@ export default function MissionPanel({ onOpenConversation }) {
                   onClick={connect}
                 >
                   {copied ? 'Copied!' : 'Claude Connect'}
-                </button>
-                <button
-                  onClick={() => onOpenConversation(detail.conversation_id)}
-                >
-                  Open deliberations
                 </button>
                 {detail.step === 'error' && (
                   <button
@@ -329,7 +401,7 @@ export default function MissionPanel({ onOpenConversation }) {
             {detail.status === 'blocked' && (
               <div className="mission-card mission-blocked">
                 <h4>The council needs a decision from you</h4>
-                <div className="mission-text">{detail.summary}</div>
+                <MissionText>{detail.summary}</MissionText>
                 <textarea
                   rows={3}
                   value={reply}
@@ -358,7 +430,7 @@ export default function MissionPanel({ onOpenConversation }) {
                     ? 'Goal reached'
                     : 'Stopped at the iteration limit'}
                 </h4>
-                <div className="mission-text">{detail.summary}</div>
+                <MissionText>{detail.summary}</MissionText>
               </div>
             )}
 
@@ -377,15 +449,19 @@ export default function MissionPanel({ onOpenConversation }) {
                         <details className="mission-step-detail">
                           <summary>Task and report</summary>
                           <div className="mission-label">Task from the council</div>
-                          <div className="mission-text">{row.it.task}</div>
+                          <MissionText>{row.it.task}</MissionText>
                           <div className="mission-label">Agent report</div>
-                          <div className="mission-text">
-                            {row.it.report || <em>Not reported yet</em>}
-                          </div>
+                          {row.it.report ? (
+                            <MissionText>{row.it.report}</MissionText>
+                          ) : (
+                            <div className="mission-text">
+                              <em>Not reported yet</em>
+                            </div>
+                          )}
                           {row.it.notes?.map((note, i) => (
                             <div key={i}>
                               <div className="mission-label">Your answer</div>
-                              <div className="mission-text">{note}</div>
+                              <MissionText>{note}</MissionText>
                             </div>
                           ))}
                         </details>

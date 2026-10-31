@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional, Deque
+from typing import List, Dict, Any, Optional, Deque, Literal
 from collections import defaultdict, deque
 from pathlib import Path
 import os
@@ -24,7 +24,7 @@ from .config import (
     MAX_TEXT_BYTES_PER_MESSAGE,
     CONTEXT_WARNING_CHARS,
 )
-from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings, build_user_content
+from .council import generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, ask_chairman_directly, calculate_aggregate_rankings, build_user_content
 
 app = FastAPI(title="LLM Council API")
 
@@ -161,6 +161,8 @@ class SendMessageRequest(BaseModel):
     content: str = ""
     images: List[str] = []
     files: List[str] = []
+    # "council" runs all three stages; "chairman" asks the chairman alone
+    mode: Literal["council", "chairman"] = "council"
 
 
 class UploadItem(BaseModel):
@@ -473,6 +475,15 @@ async def get_upload(filename: str):
     )
 
 
+def ensure_not_running(conversation_id: str):
+    """Refuse to touch a conversation while a run is still writing to it."""
+    if conversation_id in _active_runs:
+        raise HTTPException(
+            status_code=409,
+            detail="This conversation is still being answered. Wait for it to finish.",
+        )
+
+
 @app.delete(
     "/api/conversations/{conversation_id}/messages/last",
     response_model=Conversation,
@@ -489,11 +500,7 @@ async def delete_last_turn(conversation_id: str, keep_attachments: bool = False)
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
-    if conversation_id in _active_runs:
-        raise HTTPException(
-            status_code=409,
-            detail="This conversation is still being answered. Wait for it to finish.",
-        )
+    ensure_not_running(conversation_id)
 
     removed = storage.remove_last_turn(conversation_id, keep_attachments)
     if removed is None:
@@ -571,6 +578,26 @@ async def rename_conversation(conversation_id: str, request: RenameConversationR
     return {"id": conversation_id, "title": title[:100]}
 
 
+@app.delete("/api/conversations/{conversation_id}")
+async def delete_conversation(conversation_id: str):
+    """Delete a conversation for good, with its uploads."""
+    ensure_not_running(conversation_id)
+
+    # A mission that is still going writes its deliberations here
+    if any(
+        mission["conversation_id"] == conversation_id and mission["status"] == "active"
+        for mission in missions.list_missions()
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="A mission that is still active uses this conversation. Stop the mission first.",
+        )
+
+    if not storage.delete_conversation(conversation_id):
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return {"id": conversation_id}
+
+
 def with_stage2_metadata(conversation: Dict[str, Any]) -> Dict[str, Any]:
     """
     Rebuild the stage 2 metadata that storage does not keep.
@@ -607,74 +634,6 @@ async def get_conversation(conversation_id: str):
     return {
         **with_context_size(with_stage2_metadata(conversation)),
         "running": conversation_id in _active_runs,
-    }
-
-
-@app.post(
-    "/api/conversations/{conversation_id}/message",
-    dependencies=[Depends(enforce_rate_limit)],
-)
-async def send_message(conversation_id: str, request: SendMessageRequest):
-    """
-    Send a message and run the 3-stage council process.
-    Returns the complete response with all stages.
-    """
-    validate_message_request(request)
-
-    # Check if conversation exists
-    conversation = storage.get_conversation(conversation_id)
-    if conversation is None:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-
-    # Check if this is the first message
-    is_first_message = (
-        len(conversation["messages"]) == 0
-        and conversation.get("title", DEFAULT_TITLE) == DEFAULT_TITLE
-    )
-
-    # Capture the earlier turns before this message is appended
-    history = build_history_messages(conversation)
-    images = resolve_images(request.images)
-    files = resolve_files(request.files)
-
-    # Add user message
-    storage.add_user_message(
-        conversation_id, request.content, request.images, request.files
-    )
-
-    # If this is the first message, generate a title
-    if is_first_message:
-        title = await generate_conversation_title(
-            request.content, attachment_title(files)
-        )
-        storage.update_conversation_title(conversation_id, title)
-
-    # Run the 3-stage council process
-    _active_runs[conversation_id] = CouncilRun(conversation_id)
-    try:
-        stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
-            request.content,
-            images,
-            history,
-            files
-        )
-
-        # Add assistant message with all stages
-        storage.add_assistant_message(
-            conversation_id,
-            stage1_results,
-            stage2_results,
-            stage3_result
-        )
-    finally:
-        _active_runs.pop(conversation_id, None)
-
-    # Return the complete response with metadata
-    return {
-        "stage1": stage1_results,
-        "stage2": stage2_results,
-        "stage3": stage3_result,
-        "metadata": metadata
     }
 
 
@@ -740,27 +699,35 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
                     run.emit({'type': 'title_complete', 'data': {'title': title}})
                 title_saver = asyncio.create_task(save_title())
 
-            # Stage 1: Collect responses
-            run.emit({'type': 'stage1_start'})
-            stage1_results = await stage1_collect_responses(request.content, images, history, files)
-            run.emit({'type': 'stage1_complete', 'data': stage1_results})
+            solo = request.mode == "chairman"
+            if solo:
+                # A quick follow-up: only the chairman answers
+                stage1_results, stage2_results = [], []
+            else:
+                # Stage 1: Collect responses
+                run.emit({'type': 'stage1_start'})
+                stage1_results = await stage1_collect_responses(request.content, images, history, files)
+                run.emit({'type': 'stage1_complete', 'data': stage1_results})
 
-            # Stage 2: Collect rankings
-            run.emit({'type': 'stage2_start'})
-            stage2_results, label_to_model = await stage2_collect_rankings(request.content, stage1_results, images, history, files)
-            aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
-            run.emit({
-                'type': 'stage2_complete',
-                'data': stage2_results,
-                'metadata': {
-                    'label_to_model': label_to_model,
-                    'aggregate_rankings': aggregate_rankings,
-                },
-            })
+                # Stage 2: Collect rankings
+                run.emit({'type': 'stage2_start'})
+                stage2_results, label_to_model = await stage2_collect_rankings(request.content, stage1_results, images, history, files)
+                aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
+                run.emit({
+                    'type': 'stage2_complete',
+                    'data': stage2_results,
+                    'metadata': {
+                        'label_to_model': label_to_model,
+                        'aggregate_rankings': aggregate_rankings,
+                    },
+                })
 
             # Stage 3: Synthesize final answer
-            run.emit({'type': 'stage3_start'})
-            stage3_result = await stage3_synthesize_final(request.content, stage1_results, stage2_results, images, history, files)
+            run.emit({'type': 'stage3_start', 'mode': request.mode})
+            if solo:
+                stage3_result = await ask_chairman_directly(request.content, images, history, files)
+            else:
+                stage3_result = await stage3_synthesize_final(request.content, stage1_results, stage2_results, images, history, files)
             run.emit({'type': 'stage3_complete', 'data': stage3_result})
 
             if title_saver:
@@ -771,7 +738,8 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
                 conversation_id,
                 stage1_results,
                 stage2_results,
-                stage3_result
+                stage3_result,
+                request.mode
             )
 
             # Released before the client is told, so that the conversation

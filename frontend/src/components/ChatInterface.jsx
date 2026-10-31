@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Users, Crown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import Stage1 from './Stage1';
 import Stage2 from './Stage2';
@@ -8,6 +9,21 @@ import Logo from './Logo';
 import StageLoader from './StageLoader';
 import { api } from '../api';
 import './ChatInterface.css';
+
+const ASK_MODES = [
+  {
+    id: 'council',
+    label: 'Council',
+    Icon: Users,
+    hint: 'All council members answer, rank each other, and the chairman synthesizes',
+  },
+  {
+    id: 'chairman',
+    label: 'Chairman only',
+    Icon: Crown,
+    hint: 'Only the chairman answers: faster and cheaper, good for a quick follow-up',
+  },
+];
 
 /**
  * Read a File as a base64 data URL.
@@ -61,6 +77,7 @@ export default function ChatInterface({
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [askMode, setAskMode] = useState('council');
   const [uploadError, setUploadError] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const messagesEndRef = useRef(null);
@@ -205,7 +222,8 @@ export default function ChatInterface({
     onSendMessage(
       input,
       attachedImages.map((image) => image.filename),
-      attachedFiles.map(({ filename, name }) => ({ filename, name }))
+      attachedFiles.map(({ filename, name }) => ({ filename, name })),
+      askMode
     );
     setInput('');
     setAttachments([]);
@@ -336,9 +354,18 @@ export default function ChatInterface({
 
                   {/* Stage 3 */}
                   {msg.loading?.stage3 && (
-                    <StageLoader stage={3}>Running Stage 3: Final synthesis...</StageLoader>
+                    <StageLoader stage={3}>
+                      {msg.mode === 'chairman'
+                        ? 'Asking the Chairman...'
+                        : 'Running Stage 3: Final synthesis...'}
+                    </StageLoader>
                   )}
-                  {msg.stage3 && <Stage3 finalResponse={msg.stage3} />}
+                  {msg.stage3 && (
+                    <Stage3
+                      finalResponse={msg.stage3}
+                      solo={msg.mode === 'chairman'}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -454,6 +481,24 @@ export default function ChatInterface({
           </div>
         )}
 
+        <div className="ask-mode" role="radiogroup" aria-label="Who answers">
+          {ASK_MODES.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              role="radio"
+              aria-checked={askMode === option.id}
+              className={`ask-mode-option ${askMode === option.id ? 'active' : ''}`}
+              onClick={() => setAskMode(option.id)}
+              disabled={isLoading}
+              title={option.hint}
+            >
+              <option.Icon size={14} />
+              {option.label}
+            </button>
+          ))}
+        </div>
+
         <div className="input-row">
           <input
             type="file"
@@ -488,7 +533,9 @@ export default function ChatInterface({
           </button>
           <textarea
             className="message-input"
-            placeholder="Ask your question...  ·  Enter for a new line, Ctrl/Cmd+Enter to send"
+            placeholder={`${
+              askMode === 'chairman' ? 'Ask the Chairman directly...' : 'Ask your question...'
+            }  ·  Enter for a new line, Ctrl/Cmd+Enter to send`}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}

@@ -180,7 +180,8 @@ def add_assistant_message(
     conversation_id: str,
     stage1: List[Dict[str, Any]],
     stage2: List[Dict[str, Any]],
-    stage3: Dict[str, Any]
+    stage3: Dict[str, Any],
+    mode: str = "council"
 ):
     """
     Add an assistant message with all 3 stages to a conversation.
@@ -190,6 +191,7 @@ def add_assistant_message(
         stage1: List of individual model responses
         stage2: List of model rankings
         stage3: Final synthesized response
+        mode: "chairman" when the chairman answered alone, with no stages 1 and 2
     """
     conversation = get_conversation(conversation_id)
     if conversation is None:
@@ -199,7 +201,8 @@ def add_assistant_message(
         "role": "assistant",
         "stage1": stage1,
         "stage2": stage2,
-        "stage3": stage3
+        "stage3": stage3,
+        "mode": mode
     })
 
     save_conversation(conversation)
@@ -273,6 +276,25 @@ def delete_uploads(filenames: List[str]):
             os.remove(get_upload_path(filename))
         except OSError:
             pass
+
+
+def delete_conversation(conversation_id: str) -> bool:
+    """
+    Remove a conversation and the uploads its messages point at.
+
+    Returns:
+        False if there was no such conversation
+    """
+    conversation = get_conversation(conversation_id)
+    if conversation is None:
+        return False
+
+    for message in conversation["messages"]:
+        if message.get("role") == "user":
+            delete_uploads(attachment_filenames(message))
+
+    os.remove(get_conversation_path(conversation_id))
+    return True
 
 
 def update_conversation_title(conversation_id: str, title: str):

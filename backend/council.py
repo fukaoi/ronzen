@@ -240,6 +240,16 @@ Now provide your evaluation and ranking:"""
     return stage2_results, label_to_model
 
 
+async def query_chairman(messages: List[Dict[str, Any]], error_text: str) -> Dict[str, Any]:
+    """Ask the chairman model; a failed call becomes the error text as its answer."""
+    response = await query_model(CHAIRMAN_MODEL, messages)
+
+    return {
+        "model": CHAIRMAN_MODEL,
+        "response": error_text if response is None else response.get('content', ''),
+    }
+
+
 async def stage3_synthesize_final(
     user_query: str,
     stage1_results: List[Dict[str, Any]],
@@ -296,21 +306,27 @@ Your task as Chairman is to synthesize all of this information into a single, co
 Provide a clear, well-reasoned final answer that represents the council's collective wisdom:"""
 
     messages = build_messages(chairman_prompt, images, history, files)
+    return await query_chairman(messages, "Error: Unable to generate final synthesis.")
 
-    # Query the chairman model
-    response = await query_model(CHAIRMAN_MODEL, messages)
 
-    if response is None:
-        # Fallback if chairman fails
-        return {
-            "model": CHAIRMAN_MODEL,
-            "response": "Error: Unable to generate final synthesis."
-        }
+async def ask_chairman_directly(
+    user_query: str,
+    images: Optional[List[str]] = None,
+    history: Optional[List[Dict[str, Any]]] = None,
+    files: Optional[List[Dict[str, str]]] = None
+) -> Dict[str, Any]:
+    """
+    Put a question to the chairman alone, skipping stages 1 and 2.
 
-    return {
-        "model": CHAIRMAN_MODEL,
-        "response": response.get('content', '')
-    }
+    For a quick follow-up that is not worth a full deliberation. The chairman
+    answers from the conversation so far, whose earlier answers are its own
+    and the council's final syntheses.
+
+    Returns:
+        Dict with 'model' and 'response' keys
+    """
+    messages = build_messages(user_query, images, history, files)
+    return await query_chairman(messages, "Error: The chairman could not answer.")
 
 
 def parse_ranking_from_text(ranking_text: str) -> List[str]:
@@ -448,58 +464,3 @@ Title:"""
         title = title[:47] + "..."
 
     return title or "New Conversation"
-
-
-async def run_full_council(
-    user_query: str,
-    images: Optional[List[str]] = None,
-    history: Optional[List[Dict[str, Any]]] = None,
-    files: Optional[List[Dict[str, str]]] = None
-) -> Tuple[List, List, Dict, Dict]:
-    """
-    Run the complete 3-stage council process.
-
-    Args:
-        user_query: The user's question
-        images: Image data URLs attached to the question
-        history: Earlier messages in the conversation
-        files: Text attachments for the question
-
-    Returns:
-        Tuple of (stage1_results, stage2_results, stage3_result, metadata)
-    """
-    # Stage 1: Collect individual responses
-    stage1_results = await stage1_collect_responses(user_query, images, history, files)
-
-    # If no models responded successfully, return error
-    if not stage1_results:
-        return [], [], {
-            "model": "error",
-            "response": "All models failed to respond. Please try again."
-        }, {}
-
-    # Stage 2: Collect rankings
-    stage2_results, label_to_model = await stage2_collect_rankings(
-        user_query, stage1_results, images, history, files
-    )
-
-    # Calculate aggregate rankings
-    aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
-
-    # Stage 3: Synthesize final answer
-    stage3_result = await stage3_synthesize_final(
-        user_query,
-        stage1_results,
-        stage2_results,
-        images,
-        history,
-        files
-    )
-
-    # Prepare metadata
-    metadata = {
-        "label_to_model": label_to_model,
-        "aggregate_rankings": aggregate_rankings
-    }
-
-    return stage1_results, stage2_results, stage3_result, metadata

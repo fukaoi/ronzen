@@ -92,14 +92,27 @@ function App() {
     }
   };
 
-  const handleSelectConversation = (id) => {
-    setCurrentConversationId(id);
-    setView('chat');
+  const handleDeleteConversation = async (id) => {
+    try {
+      await api.deleteConversation(id);
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+      window.alert(error.message);
+      return;
+    }
+
+    setConversationsById((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    if (id === currentConversationId) {
+      setCurrentConversationId(null);
+    }
+    loadConversations();
   };
 
-  // A mission's deliberations live in an ordinary conversation
-  const handleOpenMissionConversation = async (id) => {
-    await loadConversations();
+  const handleSelectConversation = (id) => {
     setCurrentConversationId(id);
     setView('chat');
   };
@@ -302,7 +315,11 @@ function App() {
         break;
 
       case 'stage3_start':
-        setStageLoading(conversationId, 'stage3', true);
+        // 'chairman' means no stage 1 or 2 came before this
+        patchLastMessage(conversationId, (msg) => ({
+          mode: event.mode,
+          loading: { ...msg.loading, stage3: true },
+        }));
         break;
 
       case 'stage3_complete':
@@ -381,7 +398,12 @@ function App() {
 
   // `files` carries both halves of a text attachment: the stored filename the
   // API needs, and the display name the message bubble shows right away.
-  const handleSendMessage = async (content, images = [], files = []) => {
+  const handleSendMessage = async (
+    content,
+    images = [],
+    files = [],
+    mode = 'council'
+  ) => {
     if (!currentConversationId || streamingIdRef.current) return;
 
     // Pin the run to this conversation: every update below targets this id,
@@ -413,7 +435,8 @@ function App() {
         content,
         images,
         fileNames,
-        makeRunEventHandler(conversationId)
+        makeRunEventHandler(conversationId),
+        mode
       );
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -446,6 +469,7 @@ function App() {
         view={view}
         onShowMissions={() => setView('missions')}
         onShowRules={() => setShowRules(true)}
+        onDeleteConversation={handleDeleteConversation}
         onRenameConversation={async (id, title) => {
           try {
             await api.renameConversation(id, title);
@@ -456,7 +480,7 @@ function App() {
         }}
       />
       {view === 'missions' ? (
-        <MissionPanel onOpenConversation={handleOpenMissionConversation} />
+        <MissionPanel />
       ) : (
       <ChatInterface
         conversation={currentConversation}

@@ -121,6 +121,16 @@
   opacity: 1;
 }
 
+/* A mission's conversation, tinted so it stands apart from ordinary chats */
+.conversation-item.mission {
+  background: linear-gradient(
+    135deg,
+    rgba(123, 92, 240, 0.16),
+    rgba(47, 141, 245, 0.1)
+  ),
+  var(--bg);
+}
+
 .conversation-item.active {
   box-shadow: var(--nm-inset);
 }
@@ -245,6 +255,15 @@
   box-shadow: var(--nm-inset-sm);
 }
 
+.conversation-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.conversation-delete-btn:hover {
+  color: var(--c-rose);
+}
+
 .conversation-edit-btn svg {
   width: 13px;
   height: 13px;
@@ -291,4 +310,14 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+}
+
+/* On the Missions screen the list is only a way back to a chat: dim it */
+.conversation-list.inactive {
+  opacity: 0.5;
+  transition: opacity var(--ease);
+}
+
+.conversation-list.inactive:hover {
+  opacity: 0.9;
 }

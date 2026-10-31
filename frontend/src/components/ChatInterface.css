@@ -561,3 +561,46 @@ a.file-chip:hover {
     animation: none;
   }
 }
+
+/* --- Who answers: the whole council, or the chairman alone --- */
+
+.ask-mode {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--bg);
+  box-shadow: var(--nm-inset-sm);
+}
+
+.ask-mode-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--ease), color var(--ease), box-shadow var(--ease);
+}
+
+.ask-mode-option:hover:not(:disabled):not(.active) {
+  color: var(--accent);
+}
+
+.ask-mode-option.active {
+  background: var(--accent-gradient);
+  box-shadow: var(--nm-accent);
+  color: #fff;
+}
+
+.ask-mode-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

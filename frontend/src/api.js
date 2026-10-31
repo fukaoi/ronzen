@@ -206,6 +206,22 @@ export const api = {
   },
 
   /**
+   * Delete a conversation and its uploads for good.
+   * @param {string} conversationId
+   */
+  async deleteConversation(conversationId) {
+    const response = await fetch(
+      `${API_BASE}/api/conversations/${conversationId}`,
+      { method: 'DELETE' }
+    );
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      throw new Error(error?.detail || 'Failed to delete the conversation');
+    }
+    return response.json();
+  },
+
+  /**
    * Standing instructions every council model receives with each question.
    */
   async getInstructions() {
@@ -283,30 +299,6 @@ export const api = {
   },
 
   /**
-   * Send a message in a conversation.
-   * @param {string} conversationId - The conversation ID
-   * @param {string} content - The message content
-   * @param {string[]} images - Filenames of uploaded images to attach
-   * @param {string[]} files - Filenames of uploaded text files to attach
-   */
-  async sendMessage(conversationId, content, images = [], files = []) {
-    const response = await fetch(
-      `${API_BASE}/api/conversations/${conversationId}/message`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ content, images, files }),
-      }
-    );
-    if (!response.ok) {
-      throw new Error('Failed to send message');
-    }
-    return response.json();
-  },
-
-  /**
    * Send a message and receive streaming updates.
    * @param {string} conversationId - The conversation ID
    * @param {string} content - The message content
@@ -315,7 +307,14 @@ export const api = {
    * @param {function} onEvent - Callback function for each event: (eventType, data) => void
    * @returns {Promise<void>}
    */
-  async sendMessageStream(conversationId, content, images, files, onEvent) {
+  async sendMessageStream(
+    conversationId,
+    content,
+    images,
+    files,
+    onEvent,
+    mode = 'council'
+  ) {
     const response = await fetch(
       `${API_BASE}/api/conversations/${conversationId}/message/stream`,
       {
@@ -327,6 +326,7 @@ export const api = {
           content,
           images: images || [],
           files: files || [],
+          mode,
         }),
       }
     );
