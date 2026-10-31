@@ -235,6 +235,115 @@
   box-shadow: var(--nm-inset-sm);
 }
 
+.mission-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mission-step {
+  position: relative;
+  display: flex;
+  gap: 14px;
+  padding-bottom: 18px;
+}
+
+.mission-step:last-child {
+  padding-bottom: 0;
+}
+
+/* The line joining one step to the next */
+.mission-step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 13px;
+  top: 28px;
+  bottom: 0;
+  width: 2px;
+  background: var(--text-faint);
+  opacity: 0.35;
+}
+
+.mission-step-mark {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  background: var(--bg);
+  box-shadow: var(--nm-raised-sm);
+  color: var(--text-muted);
+}
+
+.mission-step.done .mission-step-mark {
+  background: rgba(39, 192, 94, 0.15);
+  color: var(--c-green);
+}
+
+.mission-step.current .mission-step-mark {
+  background: var(--accent-gradient);
+  color: #fff;
+}
+
+.mission-step.warn .mission-step-mark {
+  background: rgba(242, 163, 12, 0.18);
+  color: var(--c-amber);
+}
+
+.mission-step.pending {
+  opacity: 0.55;
+}
+
+.mission-step.pending .mission-step-mark {
+  box-shadow: var(--nm-inset-sm);
+}
+
+.mission-step-body {
+  flex: 1;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.mission-step-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.mission-step-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.mission-step.current .mission-step-label {
+  color: var(--accent);
+}
+
+.mission-step-detail {
+  margin-top: 8px;
+}
+
+.mission-step-detail summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.mission-step-detail summary:hover {
+  color: var(--accent);
+}
+
 .mission-error {
   padding: 12px 16px;
   border-radius: var(--radius-sm);

@@ -39,6 +39,79 @@ function stateLabel(mission) {
   return STATUS_LABELS[mission.status] || mission.status;
 }
 
+const STEP_MARKS = {
+  done: '✓',
+  current: '●',
+  warn: '!',
+  stopped: '■',
+  pending: '',
+};
+
+/** Where one iteration stands. Only the latest one can still be in flight. */
+function iterationState(mission, iteration, isLast) {
+  if (!isLast) return { mark: 'done', label: 'Reported' };
+  if (mission.step === 'error') {
+    return { mark: 'warn', label: 'Council step failed' };
+  }
+  switch (mission.status) {
+    case 'done':
+      return { mark: 'done', label: 'Goal reached' };
+    case 'limit':
+      return { mark: 'warn', label: 'Iteration limit reached' };
+    case 'stopped':
+      return { mark: 'stopped', label: 'Stopped' };
+    case 'blocked':
+      return { mark: 'warn', label: 'Needs your decision' };
+    default:
+      return iteration.report
+        ? { mark: 'current', label: 'Council is judging the report' }
+        : { mark: 'current', label: 'Waiting for the coding agent' };
+  }
+}
+
+/**
+ * The iterations as a vertical timeline: the ones so far, then the next one
+ * still to come. Later ones are folded into a single line, since the limit
+ * can be as high as 30.
+ */
+function stepRows(mission) {
+  const { iterations } = mission;
+  const max = Number(mission.max_iterations);
+  const isOpen = ['active', 'blocked'].includes(mission.status);
+
+  const rows = iterations.map((it, i) => ({
+    n: it.n,
+    it,
+    ...iterationState(mission, it, i === iterations.length - 1),
+  }));
+
+  // Before the first task exists the council is still drafting it
+  if (rows.length === 0 && isOpen) {
+    rows.push({
+      n: 1,
+      it: null,
+      mark: mission.step === 'error' ? 'warn' : 'current',
+      label:
+        mission.step === 'error'
+          ? 'Council step failed'
+          : 'Council is drafting the first task',
+    });
+  }
+
+  if (isOpen && rows.length < max) {
+    rows.push({ n: rows.length + 1, it: null, mark: 'pending', label: '' });
+    if (rows.length < max) {
+      rows.push({
+        n: max,
+        it: null,
+        mark: 'pending',
+        label: 'Iteration limit',
+      });
+    }
+  }
+  return rows;
+}
+
 export default function MissionPanel({ onOpenConversation }) {
   const [missions, setMissions] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -123,7 +196,7 @@ export default function MissionPanel({ onOpenConversation }) {
   return (
     <div className="mission-panel">
       <div className="mission-side">
-        <h2 className="mission-heading">Missions</h2>
+        <h2 className="mission-heading">Missions β</h2>
 
         <div className="mission-card mission-form">
           <label>Final goal</label>
@@ -289,23 +362,39 @@ export default function MissionPanel({ onOpenConversation }) {
               </div>
             )}
 
-            {[...detail.iterations].reverse().map((it) => (
-              <div className="mission-card" key={it.n}>
-                <h4>Iteration {it.n}</h4>
-                <div className="mission-label">Task from the council</div>
-                <div className="mission-text">{it.task}</div>
-                <div className="mission-label">Agent report</div>
-                <div className="mission-text">
-                  {it.report || <em>Not reported yet</em>}
-                </div>
-                {it.notes?.map((note, i) => (
-                  <div key={i}>
-                    <div className="mission-label">Your answer</div>
-                    <div className="mission-text">{note}</div>
-                  </div>
+            <div className="mission-card">
+              <h4>Iterations</h4>
+              <ol className="mission-steps">
+                {stepRows(detail).map((row) => (
+                  <li key={row.n} className={`mission-step ${row.mark}`}>
+                    <span className="mission-step-mark">{STEP_MARKS[row.mark]}</span>
+                    <div className="mission-step-body">
+                      <div className="mission-step-title">
+                        <span>Iteration {row.n}</span>
+                        <span className="mission-step-label">{row.label}</span>
+                      </div>
+                      {row.it && (
+                        <details className="mission-step-detail">
+                          <summary>Task and report</summary>
+                          <div className="mission-label">Task from the council</div>
+                          <div className="mission-text">{row.it.task}</div>
+                          <div className="mission-label">Agent report</div>
+                          <div className="mission-text">
+                            {row.it.report || <em>Not reported yet</em>}
+                          </div>
+                          {row.it.notes?.map((note, i) => (
+                            <div key={i}>
+                              <div className="mission-label">Your answer</div>
+                              <div className="mission-text">{note}</div>
+                            </div>
+                          ))}
+                        </details>
+                      )}
+                    </div>
+                  </li>
                 ))}
-              </div>
-            ))}
+              </ol>
+            </div>
           </>
         )}
       </div>

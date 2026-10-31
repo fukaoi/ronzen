@@ -46,7 +46,7 @@ export default function Sidebar({
           onClick={onShowMissions}
         >
           <Landmark size={15} />
-          Missions
+          Missions β
         </button>
         <button className="missions-btn" onClick={onShowRules}>
           Council Rules
