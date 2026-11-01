@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/top-design.png" alt="Ronzen: Mt. Fuji, the sun and cherry blossoms, with the tagline Multiple Minds. Deeper Thinking." width="560">
+</p>
+
 # Ronzen - LLM Council
 
 **Multiple Minds. Deeper Thinking.**
