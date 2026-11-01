@@ -46,7 +46,7 @@ async def call(method: str, path: str, **kwargs) -> Dict[str, Any]:
     except httpx.TransportError:
         raise CouncilError(
             f"The Ronzen server is not reachable at {BASE_URL}. "
-            "Ask the user to start it (./start-prod.sh)."
+            "Ask the user to start it (./start.sh)."
         )
     if response.status_code >= 400:
         try:

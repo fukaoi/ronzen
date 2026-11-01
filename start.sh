@@ -1,31 +1,22 @@
 #!/bin/bash
 
-# Ronzen - Start script
+# Ronzen - start script
+#
+# Builds the frontend and serves it from the backend, so the page and the API
+# share one origin on a single port. For working on the frontend with live
+# reload, run the backend and `npm --prefix frontend run dev` separately (see
+# the README).
 
-echo "Starting Ronzen..."
-echo ""
+set -e
 
-# Start backend
-echo "Starting backend on http://localhost:8001..."
-uv run python -m backend.main &
-BACKEND_PID=$!
+cd "$(dirname "$0")"
 
-# Wait a bit for backend to start
-sleep 2
-
-# Start frontend
-echo "Starting frontend on http://localhost:5173..."
-cd frontend
-npm run dev &
-FRONTEND_PID=$!
+echo "Building frontend..."
+npm --prefix frontend run build
 
 echo ""
-echo "✓ Ronzen is running!"
-echo "  Backend:  http://localhost:8001"
-echo "  Frontend: http://localhost:5173"
+echo "Starting Ronzen on http://${HOST:-127.0.0.1}:${PORT:-8001}"
+echo "(bound to loopback: reachable from this machine only)"
 echo ""
-echo "Press Ctrl+C to stop both servers"
 
-# Wait for Ctrl+C
-trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit" SIGINT SIGTERM
-wait
+exec uv run python -m backend.main

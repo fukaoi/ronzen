@@ -51,9 +51,8 @@ CONTEXT_WARNING_CHARS = int(os.getenv("CONTEXT_WARNING_CHARS", "100000"))
 
 # --- Server / network ---
 
-# Bind address. Loopback by default: when the app is published through a
-# Cloudflare Tunnel, cloudflared connects to it from the same machine, so the
-# port never has to be reachable from the network.
+# Bind address. Loopback by default, so the app is reachable from this machine
+# only.
 HOST = os.getenv("HOST", "127.0.0.1")
 PORT = int(os.getenv("PORT", "8001"))
 

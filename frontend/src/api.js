@@ -6,8 +6,7 @@
  * Where the API lives.
  *
  * In a production build the backend serves this page too, so an empty base
- * keeps every request on the page's own origin - which is what lets the
- * Cloudflare Access session cookie ride along. During `npm run dev` the page
+ * keeps every request on the page's own origin. During `npm run dev` the page
  * comes from Vite instead, so it has to reach across to the backend port.
  * VITE_API_BASE overrides both.
  */

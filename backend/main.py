@@ -110,8 +110,8 @@ def sse_response(generator) -> StreamingResponse:
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            # Tell intermediate proxies (cloudflared, nginx) to pass each
-            # stage through as it is produced instead of buffering the stream
+            # Tell any proxy in between to pass each stage through as it is
+            # produced instead of buffering the stream
             "X-Accel-Buffering": "no",
         },
     )
@@ -1068,10 +1068,9 @@ async def stop_mission(mission_id: str):
 
 # Serve the built frontend from this same app, when it has been built.
 #
-# One origin for the page and the API means one Cloudflare Tunnel hostname and
-# one Access policy covering everything, and the Access session cookie is sent
-# with every API call automatically. This mount must stay last: it claims "/",
-# so every real route above it has to be registered first.
+# One origin for the page and the API means no CORS setup and a single port.
+# This mount must stay last: it claims "/", so every real route above it has
+# to be registered first.
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 if FRONTEND_DIST.is_dir():
     app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
