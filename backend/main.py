@@ -1,4 +1,4 @@
-"""FastAPI backend for LLM Council."""
+"""FastAPI backend for Ronzen."""
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,7 +26,7 @@ from .config import (
 )
 from .council import generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, ask_chairman_directly, calculate_aggregate_rankings, build_user_content
 
-app = FastAPI(title="LLM Council API")
+app = FastAPI(title="Ronzen API")
 
 # CORS.
 #
@@ -423,7 +423,7 @@ def validate_message_request(request: SendMessageRequest):
 @app.get("/api/health")
 async def health():
     """Health check endpoint."""
-    return {"status": "ok", "service": "LLM Council API"}
+    return {"status": "ok", "service": "Ronzen API"}
 
 
 @app.post("/api/uploads", response_model=List[UploadedFile])

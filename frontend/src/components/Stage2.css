@@ -64,8 +64,8 @@
 .aggregate-rankings {
   background: linear-gradient(
     135deg,
-    rgba(242, 163, 12, 0.07),
-    rgba(244, 84, 111, 0.05)
+    rgba(217, 162, 27, 0.07),
+    rgba(184, 68, 74, 0.05)
   );
   padding: 22px;
   border-radius: var(--radius-md);
@@ -113,21 +113,21 @@
 /* Medals for the top three of the peer vote */
 .aggregate-item:nth-child(1) .rank-position {
   background: linear-gradient(140deg, #ffd96a, #e9a007);
-  box-shadow: 3px 4px 11px rgba(214, 150, 10, 0.5),
+  box-shadow: 3px 4px 11px rgba(190, 140, 30, 0.5),
     -3px -3px 7px var(--shadow-light);
   color: #6b4400;
 }
 
 .aggregate-item:nth-child(2) .rank-position {
-  background: linear-gradient(140deg, #eef1fb, #b4bcd6);
-  box-shadow: 3px 4px 11px rgba(139, 148, 178, 0.45),
+  background: linear-gradient(140deg, #f1eee6, #b9b3a5);
+  box-shadow: 3px 4px 11px rgba(140, 128, 110, 0.45),
     -3px -3px 7px var(--shadow-light);
-  color: #4a5068;
+  color: #4b463d;
 }
 
 .aggregate-item:nth-child(3) .rank-position {
   background: linear-gradient(140deg, #f3b98f, #c87a43);
-  box-shadow: 3px 4px 11px rgba(186, 110, 55, 0.42),
+  box-shadow: 3px 4px 11px rgba(160, 90, 40, 0.42),
     -3px -3px 7px var(--shadow-light);
   color: #5d2f0d;
 }

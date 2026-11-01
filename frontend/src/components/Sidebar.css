@@ -1,12 +1,31 @@
 .sidebar {
+  position: relative;
   width: 290px;
   flex-shrink: 0;
-  background: var(--bg);
+  background: transparent;
+  border-right: 1px solid rgba(110, 90, 60, 0.2);
   display: flex;
   flex-direction: column;
   height: 100vh;
   padding: 24px 18px;
   gap: 20px;
+}
+
+/* Seigaiha, the wave pattern, fading out from the foot of the sidebar */
+.sidebar::before {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 190px;
+  background: url('/seigaiha.svg') bottom center / 60px 30px repeat;
+  opacity: 0.7;
+  -webkit-mask-image: linear-gradient(to top, #000 10%, transparent);
+  mask-image: linear-gradient(to top, #000 10%, transparent);
+  pointer-events: none;
+}
+
+.sidebar > * {
+  position: relative;
 }
 
 .sidebar-header {
@@ -16,21 +35,14 @@
 }
 
 .sidebar-header h1 {
-  font-size: 13px;
-  font-weight: 800;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.1;
   margin: 0;
   padding-left: 6px;
-  background: linear-gradient(
-    100deg,
-    var(--c-violet),
-    var(--c-blue) 45%,
-    var(--c-teal)
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-transform: uppercase;
-  letter-spacing: 2px;
+  color: var(--text);
+  letter-spacing: 0.16em;
 }
 
 .new-conversation-btn {
@@ -56,7 +68,7 @@
 
 .new-conversation-btn:active {
   transform: translateY(1px);
-  box-shadow: inset 3px 3px 8px rgba(43, 57, 165, 0.5),
+  box-shadow: inset 3px 3px 8px rgba(120, 25, 20, 0.5),
     inset -2px -2px 8px rgba(255, 255, 255, 0.25);
 }
 
@@ -125,8 +137,8 @@
 .conversation-item.mission {
   background: linear-gradient(
     135deg,
-    rgba(123, 92, 240, 0.16),
-    rgba(47, 141, 245, 0.1)
+    rgba(61, 106, 152, 0.22),
+    rgba(61, 106, 152, 0.09)
   ),
   var(--bg);
 }
@@ -299,9 +311,25 @@
   gap: 10px;
 }
 
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.brand-sub {
+  padding-left: 7px;
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+
 .brand .logo {
   flex-shrink: 0;
-  filter: drop-shadow(2px 3px 5px rgba(93, 74, 222, 0.35));
+  filter: drop-shadow(2px 3px 5px rgba(180, 50, 40, 0.35));
 }
 
 .new-conversation-btn,
@@ -320,4 +348,29 @@
 
 .conversation-list.inactive:hover {
   opacity: 0.9;
+}
+
+.settings-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: var(--bg);
+  box-shadow: var(--nm-raised-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: box-shadow var(--ease), color var(--ease);
+}
+
+.settings-btn:hover {
+  color: var(--accent);
+}
+
+.settings-btn:active {
+  box-shadow: var(--nm-inset-sm);
 }

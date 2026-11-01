@@ -1,0 +1,352 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f8f1e3"/>
+      <stop offset="0.5" stop-color="#f5e6d2"/>
+      <stop offset="1" stop-color="#f3d6c4"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffc56b" stop-opacity="0.7"/>
+      <stop offset="0.5" stop-color="#f08a3a" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#e86a3a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sunfill" x1="0.15" y1="0.1" x2="0.85" y2="0.95">
+      <stop offset="0" stop-color="#f6b631"/>
+      <stop offset="0.55" stop-color="#ee8a2c"/>
+      <stop offset="1" stop-color="#df4f2e"/>
+    </linearGradient>
+    <linearGradient id="fuji" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2d4a73"/>
+      <stop offset="0.7" stop-color="#5f7fa6"/>
+      <stop offset="1" stop-color="#8fa8c3"/>
+    </linearGradient>
+    <linearGradient id="far" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#aebccb"/>
+      <stop offset="1" stop-color="#d3d8de"/>
+    </linearGradient>
+    <radialGradient id="pet" cx="0.5" cy="0.9" r="0.9">
+      <stop offset="0" stop-color="#e58aa3"/>
+      <stop offset="0.45" stop-color="#f4b7c5"/>
+      <stop offset="1" stop-color="#fde7ec"/>
+    </radialGradient>
+    <filter id="mist" x="-20%" y="-60%" width="140%" height="220%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+    <path id="p5" d="M0 0 C-7 -5 -9 -14 -4 -17 C-2 -18 -1 -16 0 -14 C1 -16 2 -18 4 -17 C9 -14 7 -5 0 0 Z" fill="url(#pet)"/>
+    <g id="blossom">
+      <use xlink:href="#p5"/>
+      <use xlink:href="#p5" transform="rotate(72)"/>
+      <use xlink:href="#p5" transform="rotate(144)"/>
+      <use xlink:href="#p5" transform="rotate(216)"/>
+      <use xlink:href="#p5" transform="rotate(288)"/>
+      <circle r="2.6" fill="#d96a88"/>
+      <g stroke="#c24a6c" stroke-width="0.8" stroke-linecap="round">
+        <path d="M0 0 L0 -6"/><path d="M0 0 L5.7 -1.9"/><path d="M0 0 L3.5 4.9"/>
+        <path d="M0 0 L-3.5 4.9"/><path d="M0 0 L-5.7 -1.9"/>
+      </g>
+    </g>
+    <path id="petal" d="M0 0 C4 -7 13 -6 12 1 C11 8 3 9 0 0 Z" fill="url(#pet)"/>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <circle cx="1090" cy="250" r="230" fill="url(#halo)"/>
+  <circle cx="1090" cy="250" r="104" fill="url(#sunfill)"/>
+
+  <g fill="#e6cb7e" opacity="0.45">
+    <path d="M60 250 C60 220 110 212 140 228 C170 200 240 206 262 236 C300 232 330 254 318 278 L70 278 C52 274 50 262 60 250 Z"/>
+    <path d="M1320 470 C1320 442 1366 436 1394 452 C1424 428 1490 436 1508 464 C1540 464 1560 486 1548 506 L1330 506 C1312 502 1310 482 1320 470 Z"/>
+  </g>
+
+  <path d="M0 640 C120 600 230 610 330 590 C440 566 520 600 640 586 C760 570 840 530 960 560 C1080 590 1180 560 1300 585 C1420 610 1520 590 1600 600 L1600 900 L0 900 Z" fill="url(#far)" opacity="0.75"/>
+
+  <g transform="translate(240 0)">
+  <!-- Fuji -->
+  <path d="M-100 780 C150 770 330 700 440 520 C470 470 500 400 525 352 L538 347 Q560 357 582 347 L595 352 C620 400 650 470 680 520 C790 700 970 770 1220 780 L1220 900 L-100 900 Z" fill="url(#fuji)"/>
+  <path d="M525 352 L538 347 Q560 357 582 347 L595 352 C618 398 642 440 658 479 L642 452 L630 484 L617 440 L600 498 L580 458 L560 520 L540 455 L520 500 L503 440 L490 486 L478 452 L462 479 C482 440 502 398 525 352 Z" fill="#f8f4ea"/>
+  <path d="M582 347 L595 352 C618 398 642 440 658 479 L640 470 C628 420 606 380 582 347 Z" fill="#cfd8e3" opacity="0.7"/>
+
+  <!-- mist, with a blush of pink from the blossom -->
+  <g fill="#f6ebdb" filter="url(#mist)">
+    <ellipse cx="520" cy="560" rx="520" ry="34" opacity="0.82"/>
+    <ellipse cx="760" cy="650" rx="640" ry="40" opacity="0.86"/>
+    <ellipse cx="300" cy="720" rx="520" ry="36" opacity="0.8"/>
+    <ellipse cx="1180" cy="610" rx="420" ry="26" opacity="0.7"/>
+  </g>
+  <g fill="#f4c6d1" filter="url(#mist)" opacity="0.35">
+    <ellipse cx="880" cy="590" rx="360" ry="22"/>
+    <ellipse cx="260" cy="650" rx="300" ry="20"/>
+  </g>
+
+  </g>
+  <path d="M0 790 C180 748 360 782 560 760 C760 738 980 800 1200 768 C1380 744 1500 776 1600 766 L1600 900 L0 900 Z" fill="#2a3e55" opacity="0.92"/>
+  <path d="M0 850 C260 818 520 846 800 830 C1060 814 1320 850 1600 826 L1600 900 L0 900 Z" fill="#1b2a3c"/>
+
+  <g transform="translate(120 0)">
+  <!-- sakura tree on the left hill -->
+  <g stroke="#3b2a22" stroke-linecap="round" fill="none">
+    <path d="M236 805 C230 760 246 720 240 680 C236 650 220 630 206 604" stroke-width="16"/>
+    <path d="M240 690 C262 660 292 640 322 628" stroke-width="9"/>
+    <path d="M226 640 C200 620 170 612 140 614" stroke-width="7"/>
+    <path d="M244 650 C250 620 246 590 258 560" stroke-width="7"/>
+  </g>
+  <g>
+    <circle cx="100" cy="560" r="33" fill="#f8d3dc" opacity="0.89"/>
+    <circle cx="104" cy="553" r="27" fill="#ea9db2" opacity="0.86"/>
+    <circle cx="310" cy="610" r="27" fill="#f1aebf" opacity="0.84"/>
+    <circle cx="267" cy="501" r="21" fill="#f8d3dc" opacity="0.81"/>
+    <circle cx="409" cy="591" r="28" fill="#ea9db2" opacity="0.92"/>
+    <circle cx="451" cy="565" r="33" fill="#f1aebf" opacity="0.93"/>
+    <circle cx="156" cy="461" r="19" fill="#ea9db2" opacity="0.82"/>
+    <circle cx="402" cy="543" r="17" fill="#f8d3dc" opacity="0.82"/>
+    <circle cx="288" cy="588" r="17" fill="#f1aebf" opacity="0.86"/>
+    <circle cx="114" cy="552" r="31" fill="#f4bccb" opacity="0.90"/>
+    <circle cx="83" cy="524" r="25" fill="#f8d3dc" opacity="0.92"/>
+    <circle cx="176" cy="469" r="21" fill="#f4bccb" opacity="0.86"/>
+    <circle cx="460" cy="533" r="31" fill="#f8d3dc" opacity="0.94"/>
+    <circle cx="219" cy="473" r="20" fill="#ea9db2" opacity="0.85"/>
+    <circle cx="236" cy="565" r="30" fill="#fbe0e6" opacity="0.86"/>
+    <circle cx="93" cy="597" r="23" fill="#f8d3dc" opacity="0.90"/>
+    <circle cx="437" cy="507" r="16" fill="#fbe0e6" opacity="0.86"/>
+    <circle cx="300" cy="641" r="24" fill="#f4bccb" opacity="0.92"/>
+    <circle cx="381" cy="526" r="17" fill="#f8d3dc" opacity="0.93"/>
+    <circle cx="123" cy="461" r="21" fill="#f4bccb" opacity="0.90"/>
+    <circle cx="353" cy="570" r="33" fill="#f8d3dc" opacity="0.88"/>
+    <circle cx="254" cy="496" r="20" fill="#f8d3dc" opacity="0.89"/>
+    <circle cx="291" cy="552" r="30" fill="#fbe0e6" opacity="0.78"/>
+    <circle cx="319" cy="612" r="24" fill="#f1aebf" opacity="0.85"/>
+    <circle cx="315" cy="627" r="18" fill="#f1aebf" opacity="0.78"/>
+    <circle cx="206" cy="504" r="24" fill="#f8d3dc" opacity="0.82"/>
+    <circle cx="275" cy="593" r="33" fill="#f1aebf" opacity="0.92"/>
+    <circle cx="288" cy="475" r="32" fill="#f4bccb" opacity="0.86"/>
+    <circle cx="282" cy="605" r="31" fill="#fbe0e6" opacity="0.89"/>
+    <circle cx="208" cy="507" r="34" fill="#f8d3dc" opacity="0.94"/>
+    <circle cx="274" cy="592" r="30" fill="#f1aebf" opacity="0.81"/>
+    <circle cx="196" cy="590" r="17" fill="#ea9db2" opacity="0.82"/>
+    <circle cx="385" cy="582" r="20" fill="#f4bccb" opacity="0.91"/>
+    <circle cx="147" cy="493" r="24" fill="#fbe0e6" opacity="0.90"/>
+    <circle cx="391" cy="515" r="26" fill="#f1aebf" opacity="0.82"/>
+    <circle cx="310" cy="498" r="19" fill="#f8d3dc" opacity="0.87"/>
+    <circle cx="409" cy="478" r="20" fill="#fbe0e6" opacity="0.87"/>
+    <circle cx="317" cy="627" r="33" fill="#f1aebf" opacity="0.85"/>
+    <circle cx="317" cy="641" r="32" fill="#f1aebf" opacity="0.79"/>
+    <circle cx="142" cy="490" r="18" fill="#ea9db2" opacity="0.80"/>
+    <circle cx="450" cy="562" r="20" fill="#ea9db2" opacity="0.81"/>
+    <circle cx="220" cy="479" r="31" fill="#f4bccb" opacity="0.84"/>
+    <circle cx="157" cy="500" r="19" fill="#fbe0e6" opacity="0.89"/>
+    <circle cx="240" cy="505" r="20" fill="#fbe0e6" opacity="0.92"/>
+    <circle cx="69" cy="496" r="27" fill="#f8d3dc" opacity="0.86"/>
+    <circle cx="212" cy="643" r="20" fill="#f1aebf" opacity="0.80"/>
+    <circle cx="358" cy="541" r="24" fill="#f4bccb" opacity="0.82"/>
+    <circle cx="332" cy="553" r="23" fill="#ea9db2" opacity="0.95"/>
+    <circle cx="182" cy="517" r="23" fill="#f8d3dc" opacity="0.87"/>
+    <circle cx="411" cy="463" r="28" fill="#f8d3dc" opacity="0.82"/>
+    <circle cx="192" cy="453" r="19" fill="#f4bccb" opacity="0.84"/>
+    <circle cx="277" cy="538" r="32" fill="#f4bccb" opacity="0.79"/>
+    <circle cx="188" cy="427" r="16" fill="#f8d3dc" opacity="0.87"/>
+    <circle cx="154" cy="475" r="29" fill="#f8d3dc" opacity="0.86"/>
+    <circle cx="162" cy="639" r="17" fill="#f4bccb" opacity="0.82"/>
+    <circle cx="77" cy="507" r="32" fill="#f4bccb" opacity="0.85"/>
+    <circle cx="236" cy="439" r="30" fill="#f4bccb" opacity="0.81"/>
+    <circle cx="357" cy="500" r="28" fill="#f8d3dc" opacity="0.90"/>
+    <circle cx="409" cy="472" r="24" fill="#f1aebf" opacity="0.86"/>
+    <circle cx="299" cy="432" r="26" fill="#fbe0e6" opacity="0.93"/>
+    <circle cx="158" cy="485" r="26" fill="#fbe0e6" opacity="0.92"/>
+    <circle cx="204" cy="514" r="28" fill="#ea9db2" opacity="0.94"/>
+    <circle cx="447" cy="530" r="29" fill="#ea9db2" opacity="0.88"/>
+    <circle cx="112" cy="599" r="26" fill="#f4bccb" opacity="0.91"/>
+    <circle cx="71" cy="573" r="18" fill="#ea9db2" opacity="0.87"/>
+    <circle cx="250" cy="515" r="27" fill="#f8d3dc" opacity="0.92"/>
+    <circle cx="150" cy="542" r="29" fill="#fbe0e6" opacity="0.89"/>
+    <circle cx="85" cy="537" r="33" fill="#fbe0e6" opacity="0.87"/>
+    <circle cx="249" cy="547" r="21" fill="#fbe0e6" opacity="0.82"/>
+    <circle cx="209" cy="488" r="19" fill="#ea9db2" opacity="0.94"/>
+  </g>
+  <g>
+    <use xlink:href="#blossom" transform="translate(365 467) rotate(18) scale(0.94)"/>
+    <use xlink:href="#blossom" transform="translate(403 518) rotate(25) scale(1.06)"/>
+    <use xlink:href="#blossom" transform="translate(188 557) rotate(48) scale(0.80)"/>
+    <use xlink:href="#blossom" transform="translate(458 556) rotate(51) scale(1.03)"/>
+    <use xlink:href="#blossom" transform="translate(44 502) rotate(11) scale(0.85)"/>
+    <use xlink:href="#blossom" transform="translate(230 506) rotate(52) scale(1.04)"/>
+    <use xlink:href="#blossom" transform="translate(419 484) rotate(31) scale(0.98)"/>
+    <use xlink:href="#blossom" transform="translate(174 542) rotate(60) scale(1.00)"/>
+    <use xlink:href="#blossom" transform="translate(180 529) rotate(3) scale(0.99)"/>
+    <use xlink:href="#blossom" transform="translate(319 515) rotate(2) scale(1.15)"/>
+    <use xlink:href="#blossom" transform="translate(333 546) rotate(36) scale(0.81)"/>
+    <use xlink:href="#blossom" transform="translate(194 599) rotate(13) scale(1.08)"/>
+    <use xlink:href="#blossom" transform="translate(86 535) rotate(32) scale(1.18)"/>
+    <use xlink:href="#blossom" transform="translate(214 437) rotate(2) scale(1.20)"/>
+    <use xlink:href="#blossom" transform="translate(152 589) rotate(20) scale(1.04)"/>
+    <use xlink:href="#blossom" transform="translate(56 508) rotate(27) scale(1.04)"/>
+    <use xlink:href="#blossom" transform="translate(55 515) rotate(17) scale(1.08)"/>
+    <use xlink:href="#blossom" transform="translate(270 638) rotate(23) scale(1.16)"/>
+    <use xlink:href="#blossom" transform="translate(201 597) rotate(27) scale(1.22)"/>
+    <use xlink:href="#blossom" transform="translate(267 483) rotate(30) scale(0.84)"/>
+    <use xlink:href="#blossom" transform="translate(293 561) rotate(55) scale(0.97)"/>
+    <use xlink:href="#blossom" transform="translate(319 467) rotate(16) scale(1.16)"/>
+    <use xlink:href="#blossom" transform="translate(302 626) rotate(12) scale(1.16)"/>
+    <use xlink:href="#blossom" transform="translate(304 629) rotate(46) scale(1.21)"/>
+    <use xlink:href="#blossom" transform="translate(364 592) rotate(64) scale(1.14)"/>
+    <use xlink:href="#blossom" transform="translate(446 534) rotate(61) scale(1.16)"/>
+    <use xlink:href="#blossom" transform="translate(283 549) rotate(65) scale(1.05)"/>
+    <use xlink:href="#blossom" transform="translate(373 488) rotate(14) scale(0.89)"/>
+    <use xlink:href="#blossom" transform="translate(306 640) rotate(12) scale(1.25)"/>
+    <use xlink:href="#blossom" transform="translate(181 514) rotate(9) scale(1.11)"/>
+    <use xlink:href="#blossom" transform="translate(261 467) rotate(65) scale(1.01)"/>
+    <use xlink:href="#blossom" transform="translate(190 579) rotate(5) scale(0.97)"/>
+    <use xlink:href="#blossom" transform="translate(301 493) rotate(47) scale(1.00)"/>
+    <use xlink:href="#blossom" transform="translate(171 565) rotate(65) scale(0.87)"/>
+  </g>
+  </g>
+  <!-- cherry branches framing the top -->
+  <g transform="translate(-20 0)">
+  <path d="M1620 10 C1500 50 1400 120 1190 150" fill="none" stroke="#4a3426" stroke-width="9" stroke-linecap="round"/>
+  <path d="M1500 62 C1470 110 1450 150 1410 190" fill="none" stroke="#4a3426" stroke-width="5" stroke-linecap="round"/>
+  <path d="M1400 112 C1388 78 1360 56 1330 44" fill="none" stroke="#4a3426" stroke-width="4" stroke-linecap="round"/>
+  <path d="M1300 134 C1290 170 1270 196 1236 214" fill="none" stroke="#4a3426" stroke-width="3.5" stroke-linecap="round"/>
+    <use xlink:href="#blossom" transform="translate(1583 18) rotate(61) scale(1.24)"/>
+    <use xlink:href="#blossom" transform="translate(1549 49) rotate(36) scale(1.26)"/>
+    <use xlink:href="#blossom" transform="translate(1544 61) rotate(3) scale(1.36)"/>
+    <circle cx="1530" cy="70" r="3.9" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(1524 55) rotate(49) scale(1.37)"/>
+    <circle cx="1515" cy="71" r="5.0" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(1488 64) rotate(40) scale(1.35)"/>
+    <circle cx="1509" cy="82" r="4.7" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(1469 82) rotate(31) scale(1.49)"/>
+    <circle cx="1448" cy="107" r="5.8" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(1445 62) rotate(31) scale(1.03)"/>
+    <use xlink:href="#blossom" transform="translate(1431 74) rotate(53) scale(1.01)"/>
+    <circle cx="1416" cy="83" r="4.8" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(1411 82) rotate(56) scale(1.02)"/>
+    <circle cx="1406" cy="103" r="5.1" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(1373 108) rotate(46) scale(1.33)"/>
+    <use xlink:href="#blossom" transform="translate(1347 112) rotate(17) scale(1.24)"/>
+    <use xlink:href="#blossom" transform="translate(1315 110) rotate(30) scale(1.35)"/>
+    <circle cx="1315" cy="125" r="4.8" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(1285 144) rotate(35) scale(1.42)"/>
+    <circle cx="1295" cy="164" r="5.0" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(1256 120) rotate(30) scale(1.30)"/>
+    <circle cx="1243" cy="150" r="5.8" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(1234 166) rotate(5) scale(1.43)"/>
+    <use xlink:href="#blossom" transform="translate(1198 130) rotate(33) scale(0.96)"/>
+    <circle cx="1204" cy="140" r="4.9" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(1405 189) rotate(47) scale(1.36)"/>
+    <use xlink:href="#blossom" transform="translate(1332 45) rotate(22) scale(1.25)"/>
+    <circle cx="1345" cy="72" r="4.2" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(1238 219) rotate(66) scale(0.96)"/>
+    <circle cx="1220" cy="234" r="3.6" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(1454 151) rotate(18) scale(1.00)"/>
+    <circle cx="1471" cy="168" r="5.3" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(1371 169) rotate(66) scale(1.22)"/>
+    <circle cx="1369" cy="185" r="5.5" fill="#e98fa8"/>
+  </g>
+  <g transform="translate(90 0)">
+  <path d="M-20 30 C120 20 250 80 430 100" fill="none" stroke="#4a3426" stroke-width="8" stroke-linecap="round"/>
+  <path d="M130 30 C150 70 170 100 210 126" fill="none" stroke="#4a3426" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M300 82 C312 50 336 30 366 22" fill="none" stroke="#4a3426" stroke-width="3.5" stroke-linecap="round"/>
+    <use xlink:href="#blossom" transform="translate(26 50) rotate(11) scale(0.99)"/>
+    <use xlink:href="#blossom" transform="translate(54 19) rotate(30) scale(1.04)"/>
+    <use xlink:href="#blossom" transform="translate(84 20) rotate(61) scale(1.16)"/>
+    <circle cx="76" cy="39" r="3.8" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(106 39) rotate(15) scale(1.43)"/>
+    <circle cx="123" cy="66" r="5.4" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(143 31) rotate(33) scale(1.19)"/>
+    <circle cx="125" cy="43" r="5.6" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(164 45) rotate(37) scale(1.28)"/>
+    <circle cx="177" cy="73" r="4.6" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(203 39) rotate(12) scale(1.15)"/>
+    <circle cx="194" cy="59" r="4.6" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(224 52) rotate(59) scale(1.26)"/>
+    <circle cx="238" cy="61" r="4.0" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(261 70) rotate(10) scale(1.31)"/>
+    <use xlink:href="#blossom" transform="translate(299 84) rotate(41) scale(1.22)"/>
+    <circle cx="280" cy="100" r="5.3" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(316 73) rotate(15) scale(1.15)"/>
+    <circle cx="313" cy="94" r="5.8" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(355 83) rotate(35) scale(1.33)"/>
+    <circle cx="371" cy="98" r="4.3" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(395 92) rotate(66) scale(1.17)"/>
+    <circle cx="388" cy="108" r="4.4" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(430 115) rotate(49) scale(1.17)"/>
+    <use xlink:href="#blossom" transform="translate(209 131) rotate(54) scale(1.41)"/>
+    <circle cx="211" cy="157" r="3.7" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(365 28) rotate(13) scale(0.99)"/>
+    <use xlink:href="#blossom" transform="translate(160 77) rotate(17) scale(1.13)"/>
+    <circle cx="162" cy="101" r="5.3" fill="#e98fa8"/>
+    <use xlink:href="#blossom" transform="translate(329 58) rotate(52) scale(1.45)"/>
+  </g>
+  <!-- drifting petals -->
+  <g>
+    <use xlink:href="#petal" transform="translate(1538 304) rotate(193) scale(0.55)" opacity="0.85"/>
+    <use xlink:href="#petal" transform="translate(1391 730) rotate(268) scale(1.06)" opacity="0.65"/>
+    <use xlink:href="#petal" transform="translate(55 137) rotate(74) scale(1.29)" opacity="0.60"/>
+    <use xlink:href="#petal" transform="translate(287 505) rotate(164) scale(1.10)" opacity="0.59"/>
+    <use xlink:href="#petal" transform="translate(686 264) rotate(30) scale(1.33)" opacity="0.70"/>
+    <use xlink:href="#petal" transform="translate(1151 272) rotate(91) scale(0.67)" opacity="0.88"/>
+    <use xlink:href="#petal" transform="translate(1185 72) rotate(18) scale(0.93)" opacity="0.63"/>
+    <use xlink:href="#petal" transform="translate(340 312) rotate(307) scale(1.02)" opacity="0.80"/>
+    <use xlink:href="#petal" transform="translate(944 217) rotate(143) scale(0.70)" opacity="0.67"/>
+    <use xlink:href="#petal" transform="translate(1424 716) rotate(281) scale(1.05)" opacity="0.70"/>
+    <use xlink:href="#petal" transform="translate(436 681) rotate(175) scale(1.28)" opacity="0.78"/>
+    <use xlink:href="#petal" transform="translate(1213 125) rotate(204) scale(1.24)" opacity="0.52"/>
+    <use xlink:href="#petal" transform="translate(1480 621) rotate(270) scale(0.86)" opacity="0.83"/>
+    <use xlink:href="#petal" transform="translate(1217 611) rotate(121) scale(0.60)" opacity="0.87"/>
+    <use xlink:href="#petal" transform="translate(1369 694) rotate(126) scale(0.91)" opacity="0.80"/>
+    <use xlink:href="#petal" transform="translate(961 170) rotate(164) scale(0.68)" opacity="0.56"/>
+    <use xlink:href="#petal" transform="translate(1420 627) rotate(317) scale(0.65)" opacity="0.61"/>
+    <use xlink:href="#petal" transform="translate(853 165) rotate(0) scale(1.17)" opacity="0.59"/>
+    <use xlink:href="#petal" transform="translate(1433 164) rotate(180) scale(0.65)" opacity="0.61"/>
+    <use xlink:href="#petal" transform="translate(1129 128) rotate(239) scale(0.93)" opacity="0.53"/>
+    <use xlink:href="#petal" transform="translate(1178 440) rotate(9) scale(0.95)" opacity="0.83"/>
+    <use xlink:href="#petal" transform="translate(674 702) rotate(225) scale(0.62)" opacity="0.59"/>
+    <use xlink:href="#petal" transform="translate(866 428) rotate(159) scale(0.68)" opacity="0.63"/>
+    <use xlink:href="#petal" transform="translate(656 449) rotate(341) scale(1.35)" opacity="0.80"/>
+    <use xlink:href="#petal" transform="translate(587 541) rotate(201) scale(0.63)" opacity="0.78"/>
+    <use xlink:href="#petal" transform="translate(1175 609) rotate(227) scale(0.65)" opacity="0.51"/>
+    <use xlink:href="#petal" transform="translate(613 557) rotate(288) scale(0.74)" opacity="0.55"/>
+    <use xlink:href="#petal" transform="translate(1213 659) rotate(105) scale(1.23)" opacity="0.88"/>
+    <use xlink:href="#petal" transform="translate(271 499) rotate(152) scale(1.30)" opacity="0.90"/>
+    <use xlink:href="#petal" transform="translate(1187 449) rotate(96) scale(0.62)" opacity="0.58"/>
+    <use xlink:href="#petal" transform="translate(1152 291) rotate(288) scale(1.31)" opacity="0.70"/>
+    <use xlink:href="#petal" transform="translate(1013 373) rotate(52) scale(0.86)" opacity="0.56"/>
+    <use xlink:href="#petal" transform="translate(183 534) rotate(92) scale(1.12)" opacity="0.58"/>
+    <use xlink:href="#petal" transform="translate(95 384) rotate(51) scale(1.11)" opacity="0.60"/>
+    <use xlink:href="#petal" transform="translate(279 147) rotate(37) scale(0.88)" opacity="0.64"/>
+    <use xlink:href="#petal" transform="translate(1291 709) rotate(105) scale(0.66)" opacity="0.82"/>
+    <use xlink:href="#petal" transform="translate(1288 330) rotate(211) scale(0.82)" opacity="0.76"/>
+    <use xlink:href="#petal" transform="translate(1145 489) rotate(125) scale(0.80)" opacity="0.78"/>
+    <use xlink:href="#petal" transform="translate(965 73) rotate(175) scale(0.81)" opacity="0.63"/>
+    <use xlink:href="#petal" transform="translate(711 450) rotate(170) scale(0.71)" opacity="0.83"/>
+    <use xlink:href="#petal" transform="translate(1294 488) rotate(275) scale(0.68)" opacity="0.88"/>
+    <use xlink:href="#petal" transform="translate(873 307) rotate(72) scale(0.95)" opacity="0.74"/>
+    <use xlink:href="#petal" transform="translate(341 713) rotate(100) scale(1.35)" opacity="0.74"/>
+    <use xlink:href="#petal" transform="translate(81 522) rotate(69) scale(1.17)" opacity="0.60"/>
+    <use xlink:href="#petal" transform="translate(916 548) rotate(184) scale(0.81)" opacity="0.61"/>
+    <use xlink:href="#petal" transform="translate(1382 377) rotate(122) scale(1.13)" opacity="0.88"/>
+    <use xlink:href="#petal" transform="translate(866 453) rotate(135) scale(1.00)" opacity="0.57"/>
+    <use xlink:href="#petal" transform="translate(1173 688) rotate(74) scale(0.82)" opacity="0.55"/>
+    <use xlink:href="#petal" transform="translate(1293 262) rotate(123) scale(1.27)" opacity="0.82"/>
+    <use xlink:href="#petal" transform="translate(592 176) rotate(39) scale(1.03)" opacity="0.69"/>
+    <use xlink:href="#petal" transform="translate(653 608) rotate(337) scale(1.29)" opacity="0.56"/>
+    <use xlink:href="#petal" transform="translate(1189 653) rotate(314) scale(1.28)" opacity="0.75"/>
+    <use xlink:href="#petal" transform="translate(1262 71) rotate(239) scale(0.71)" opacity="0.51"/>
+    <use xlink:href="#petal" transform="translate(842 143) rotate(172) scale(0.87)" opacity="0.72"/>
+    <use xlink:href="#petal" transform="translate(441 458) rotate(328) scale(0.82)" opacity="0.83"/>
+    <use xlink:href="#petal" transform="translate(1137 611) rotate(254) scale(0.87)" opacity="0.75"/>
+    <use xlink:href="#petal" transform="translate(754 348) rotate(352) scale(1.05)" opacity="0.74"/>
+    <use xlink:href="#petal" transform="translate(659 257) rotate(237) scale(1.26)" opacity="0.85"/>
+  </g>
+  <g filter="url(#glow)">
+    <use xlink:href="#petal" transform="translate(1325 365) rotate(289) scale(2.23)" opacity="0.55"/>
+    <use xlink:href="#petal" transform="translate(230 683) rotate(266) scale(2.13)" opacity="0.55"/>
+    <use xlink:href="#petal" transform="translate(700 663) rotate(27) scale(2.12)" opacity="0.55"/>
+    <use xlink:href="#petal" transform="translate(498 490) rotate(192) scale(2.23)" opacity="0.55"/>
+    <use xlink:href="#petal" transform="translate(944 571) rotate(303) scale(2.10)" opacity="0.55"/>
+    <use xlink:href="#petal" transform="translate(1358 267) rotate(124) scale(2.64)" opacity="0.55"/>
+    <use xlink:href="#petal" transform="translate(804 358) rotate(355) scale(1.85)" opacity="0.55"/>
+    <use xlink:href="#petal" transform="translate(216 666) rotate(336) scale(2.34)" opacity="0.55"/>
+  </g>
+</svg>

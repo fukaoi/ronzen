@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Users, Crown } from 'lucide-react';
+import { Users, Stamp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import Stage1 from './Stage1';
 import Stage2 from './Stage2';
 import Stage3 from './Stage3';
@@ -8,31 +9,32 @@ import CouncilRoster from './CouncilRoster';
 import Logo from './Logo';
 import StageLoader from './StageLoader';
 import { api } from '../api';
+import { useI18n } from '../i18n/useI18n';
 import './ChatInterface.css';
 
 const ASK_MODES = [
   {
     id: 'council',
-    label: 'Council',
+    labelKey: 'chat.modeCouncil',
     Icon: Users,
-    hint: 'All council members answer, rank each other, and the chairman synthesizes',
+    hintKey: 'chat.modeCouncilHint',
   },
   {
     id: 'chairman',
-    label: 'Chairman only',
-    Icon: Crown,
-    hint: 'Only the chairman answers: faster and cheaper, good for a quick follow-up',
+    labelKey: 'chat.modeChairman',
+    Icon: Stamp,
+    hintKey: 'chat.modeChairmanHint',
   },
 ];
 
 /**
  * Read a File as a base64 data URL.
  */
-function readFileAsDataUrl(file) {
+function readFileAsDataUrl(file, t) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
+    reader.onerror = () => reject(new Error(t('chat.readFailed', { name: file.name })));
     reader.readAsDataURL(file);
   });
 }
@@ -74,6 +76,7 @@ export default function ChatInterface({
   onHandOff,
   initialAttachments,
 }) {
+  const { t } = useI18n();
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -108,7 +111,7 @@ export default function ChatInterface({
     try {
       const items = await Promise.all(
         picked.map(async (file) => ({
-          data_url: await readFileAsDataUrl(file),
+          data_url: await readFileAsDataUrl(file, t),
           name: file.name,
         }))
       );
@@ -200,7 +203,7 @@ export default function ChatInterface({
 
   const handleDeleteLastTurn = async () => {
     const confirmed = window.confirm(
-      'Delete the last question and its answer? This cannot be undone.'
+      t('chat.confirmDeleteLast')
     );
     if (confirmed) {
       await onDeleteLastTurn?.();
@@ -243,8 +246,8 @@ export default function ChatInterface({
     return (
       <div className="chat-interface">
         <div className="empty-state">
-          <h2>Welcome to LLM COUNCIL2</h2>
-          <p>Create a new conversation to get started</p>
+          <h2>{t('chat.welcomeTitle')}</h2>
+          <p>{t('chat.welcomeText')}</p>
         </div>
       </div>
     );
@@ -255,15 +258,15 @@ export default function ChatInterface({
       <div className="messages-container">
         {conversation.messages.length === 0 ? (
           <div className="empty-state">
-            <h2>Start a conversation</h2>
-            <p>Ask a question to consult the LLM COUNCIL2</p>
+            <h2>{t('chat.startTitle')}</h2>
+            <p>{t('chat.startText')}</p>
           </div>
         ) : (
           conversation.messages.map((msg, index) => (
             <div key={index} className="message-group">
               {msg.role === 'user' ? (
                 <div className="user-message">
-                  <div className="message-label">You</div>
+                  <div className="message-label">{t('chat.you')}</div>
                   <div className="message-content">
                     {msg.images?.length > 0 && (
                       <div className="message-images">
@@ -300,7 +303,7 @@ export default function ChatInterface({
                     )}
                     {msg.content && (
                       <div className="markdown-content">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                       </div>
                     )}
                   </div>
@@ -310,24 +313,24 @@ export default function ChatInterface({
                         type="button"
                         className="message-action"
                         onClick={() => handleEditLastTurn(msg)}
-                        title="Put this question back in the box to change it"
+                        title={t('chat.editHint')}
                       >
-                        Edit
+                        {t('common.edit')}
                       </button>
                       <button
                         type="button"
                         className="message-action danger"
                         onClick={handleDeleteLastTurn}
-                        title="Delete this question and its answer"
+                        title={t('chat.deleteHint')}
                       >
-                        Delete
+                        {t('common.delete')}
                       </button>
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="assistant-message">
-                  <div className="message-label">LLM COUNCIL2</div>
+                  <div className="message-label">Ronzen</div>
 
                   <CouncilRoster
                     members={msg.stage1?.map((resp) => resp.model)}
@@ -336,13 +339,13 @@ export default function ChatInterface({
 
                   {/* Stage 1 */}
                   {msg.loading?.stage1 && (
-                    <StageLoader stage={1}>Running Stage 1: Collecting individual responses...</StageLoader>
+                    <StageLoader stage={1}>{t('chat.stage1Running')}</StageLoader>
                   )}
                   {msg.stage1 && <Stage1 responses={msg.stage1} />}
 
                   {/* Stage 2 */}
                   {msg.loading?.stage2 && (
-                    <StageLoader stage={2}>Running Stage 2: Peer rankings...</StageLoader>
+                    <StageLoader stage={2}>{t('chat.stage2Running')}</StageLoader>
                   )}
                   {msg.stage2 && (
                     <Stage2
@@ -356,8 +359,8 @@ export default function ChatInterface({
                   {msg.loading?.stage3 && (
                     <StageLoader stage={3}>
                       {msg.mode === 'chairman'
-                        ? 'Asking the Chairman...'
-                        : 'Running Stage 3: Final synthesis...'}
+                        ? t('chat.chairmanRunning')
+                        : t('chat.stage3Running')}
                     </StageLoader>
                   )}
                   {msg.stage3 && (
@@ -375,7 +378,7 @@ export default function ChatInterface({
         {isLoading && (
           <div className="loading-indicator">
             <Logo size={34} typing />
-            <span>Consulting the council...</span>
+            <span>{t('chat.consulting')}</span>
           </div>
         )}
 
@@ -396,16 +399,15 @@ export default function ChatInterface({
             }`}
           >
             <span className="context-size">
-              History carried into every question:{' '}
+              {t('chat.historyCarried')}{' '}
               <strong>
-                {conversation.context_chars.toLocaleString()} characters
+                {t('chat.characters', { n: conversation.context_chars.toLocaleString() })}
               </strong>
             </span>
             {conversation.context_heavy && (
               <>
                 <span className="context-note">
-                  Each question replays this to every council member twice and
-                  to the chairman once, so it costs about seven times its size.
+                  {t('chat.contextNote')}
                 </span>
                 <button
                   type="button"
@@ -413,7 +415,7 @@ export default function ChatInterface({
                   onClick={onHandOff}
                   disabled={isLoading || busyElsewhere}
                 >
-                  Carry on in a new conversation
+                  {t('chat.carryOn')}
                 </button>
               </>
             )}
@@ -429,7 +431,7 @@ export default function ChatInterface({
                   type="button"
                   className="attachment-remove"
                   onClick={() => removeAttachment(image.filename)}
-                  title="Remove attachment"
+                  title={t('chat.removeAttachment')}
                 >
                   ×
                 </button>
@@ -451,7 +453,7 @@ export default function ChatInterface({
                   type="button"
                   className="file-chip-remove"
                   onClick={() => removeAttachment(file.filename)}
-                  title="Remove attachment"
+                  title={t('chat.removeAttachment')}
                 >
                   ×
                 </button>
@@ -463,7 +465,7 @@ export default function ChatInterface({
         {isUploading && (
           <div className="attachment-status">
             <div className="spinner"></div>
-            <span>Uploading...</span>
+            <span>{t('chat.uploading')}</span>
           </div>
         )}
 
@@ -475,13 +477,12 @@ export default function ChatInterface({
           <div className="attachment-status">
             <div className="spinner"></div>
             <span>
-              Another conversation is still consulting the council. It keeps
-              running - you can watch it from the sidebar.
+              {t('chat.busyElsewhere')}
             </span>
           </div>
         )}
 
-        <div className="ask-mode" role="radiogroup" aria-label="Who answers">
+        <div className="ask-mode" role="radiogroup" aria-label={t('chat.whoAnswers')}>
           {ASK_MODES.map((option) => (
             <button
               key={option.id}
@@ -491,10 +492,10 @@ export default function ChatInterface({
               className={`ask-mode-option ${askMode === option.id ? 'active' : ''}`}
               onClick={() => setAskMode(option.id)}
               disabled={isLoading}
-              title={option.hint}
+              title={t(option.hintKey)}
             >
               <option.Icon size={14} />
-              {option.label}
+              {t(option.labelKey)}
             </button>
           ))}
         </div>
@@ -513,7 +514,7 @@ export default function ChatInterface({
             className="attach-button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading || busyElsewhere || isUploading}
-            title="Attach images or text files (you can also drop or paste them)"
+            title={t('chat.attachHint')}
           >
             <svg
               width="20"
@@ -534,8 +535,8 @@ export default function ChatInterface({
           <textarea
             className="message-input"
             placeholder={`${
-              askMode === 'chairman' ? 'Ask the Chairman directly...' : 'Ask your question...'
-            }  ·  Enter for a new line, Ctrl/Cmd+Enter to send`}
+              askMode === 'chairman' ? t('chat.askChairman') : t('chat.askCouncil')
+            }  ·  ${t('chat.sendHint')}`}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -544,7 +545,7 @@ export default function ChatInterface({
             rows={3}
           />
           <button type="submit" className="send-button" disabled={!canSend}>
-            Send
+            {t('chat.send')}
           </button>
         </div>
       </form>

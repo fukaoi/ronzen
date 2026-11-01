@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import ModelIcon from './ModelIcon';
 import StageBadge from './StageBadge';
+import { useI18n } from '../i18n/useI18n';
 import { shortName } from '../models';
 import './Stage2.css';
 
@@ -28,6 +30,7 @@ function rankStrength(averageRank, modelCount) {
 }
 
 export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState(0);
 
   if (!rankings || rankings.length === 0) {
@@ -38,13 +41,14 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
     <div className="stage stage2">
       <h3 className="stage-title">
         <StageBadge stage={2} />
-        Stage 2: Peer Rankings
+        {t('stage.2')}
       </h3>
 
-      <h4>Raw Evaluations</h4>
+      <h4>{t('stage.rawEvaluations')}</h4>
       <p className="stage-description">
-        Each model evaluated all responses (anonymized as Response A, B, C, etc.) and provided rankings.
-        Below, model names are shown in <strong>bold</strong> for readability, but the original evaluation used anonymous labels.
+        {t('stage.descBefore')}
+        <strong>{t('stage.descBold')}</strong>
+        {t('stage.descAfter')}
       </p>
 
       <div className="tabs">
@@ -66,7 +70,7 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
           {rankings[activeTab].model}
         </div>
         <div className="ranking-content markdown-content">
-          <ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
             {deAnonymizeText(rankings[activeTab].ranking, labelToModel)}
           </ReactMarkdown>
         </div>
@@ -74,7 +78,7 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
         {rankings[activeTab].parsed_ranking &&
          rankings[activeTab].parsed_ranking.length > 0 && (
           <div className="parsed-ranking">
-            <strong>Extracted Ranking:</strong>
+            <strong>{t('stage.extracted')}</strong>
             <ol>
               {rankings[activeTab].parsed_ranking.map((label, i) => (
                 <li key={i}>
@@ -95,9 +99,9 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
 
       {aggregateRankings && aggregateRankings.length > 0 && (
         <div className="aggregate-rankings">
-          <h4>Aggregate Rankings (Street Cred)</h4>
+          <h4>{t('stage.aggregate')}</h4>
           <p className="stage-description">
-            Combined results across all peer evaluations (lower score is better):
+            {t('stage.aggregateDesc')}
           </p>
           <div className="aggregate-list">
             {aggregateRankings.map((agg, index) => (
@@ -115,10 +119,10 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
                   </span>
                 </span>
                 <span className="rank-score">
-                  Avg: {agg.average_rank.toFixed(2)}
+                  {t('stage.avg', { value: agg.average_rank.toFixed(2) })}
                 </span>
                 <span className="rank-count">
-                  ({agg.rankings_count} votes)
+                  {t('stage.votes', { n: agg.rankings_count })}
                 </span>
               </div>
             ))}

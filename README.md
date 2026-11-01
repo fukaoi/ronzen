@@ -1,4 +1,6 @@
-# LLM Council2
+# Ronzen - LLM Council
+
+**Multiple Minds. Deeper Thinking.**
 
 A local web app that puts several LLMs on a council. Instead of asking one model, you ask them all through [OpenRouter](https://openrouter.ai/): they answer independently, rank each other's answers without knowing who wrote what, and a Chairman model writes the final answer. It also lets the council direct a coding agent through long jobs (Missions).
 
@@ -109,7 +111,7 @@ This builds the frontend and serves everything from http://127.0.0.1:8001. To re
 1. Register the MCP server once. User scope makes it available in any project:
 
    ```bash
-   claude mcp add --scope user llm-council -- uv run --directory /path/to/llm-council2 python -m backend.mcp_server
+   claude mcp add --scope user llm-council -- uv run --directory /path/to/ronzen python -m backend.mcp_server
    ```
 
    For Claude Desktop, add the same command under `mcpServers` in `claude_desktop_config.json`.

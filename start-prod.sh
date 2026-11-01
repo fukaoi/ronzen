@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# LLM Council - production start script
+# Ronzen - production start script
 #
 # Builds the frontend and serves it from the backend, so the page and the API
 # share one origin. Point a Cloudflare Tunnel at http://localhost:8001 and put
@@ -15,7 +15,7 @@ echo "Building frontend..."
 npm --prefix frontend run build
 
 echo ""
-echo "Starting LLM Council on http://${HOST:-127.0.0.1}:${PORT:-8001}"
+echo "Starting Ronzen on http://${HOST:-127.0.0.1}:${PORT:-8001}"
 echo "(bound to loopback - expose it with a tunnel, not by opening the port)"
 echo ""
 

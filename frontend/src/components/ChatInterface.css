@@ -4,7 +4,7 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: var(--bg);
+  background: transparent;
   padding: 24px 24px 24px 6px;
   gap: 20px;
 }
@@ -16,26 +16,44 @@
   margin: -10px -4px;
 }
 
+/* The welcome screen is a painting: Fuji, the red sun, mist and cherry
+   blossom. The words sit in the clear sky above the mountain. */
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   height: 100%;
+  padding-top: 11vh;
+  border-radius: var(--radius-lg);
+  background: url('/bg-fuji.svg') center bottom / cover no-repeat,
+    var(--bg);
+  box-shadow: var(--nm-raised);
   color: var(--text-muted);
   text-align: center;
 }
 
 .empty-state h2 {
-  margin: 0 0 10px 0;
-  font-size: 22px;
-  font-weight: 600;
+  margin: 0 0 12px 0;
+  font-family: var(--font-serif);
+  max-width: 88%;
+  font-size: clamp(24px, 3.6vw, 46px);
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  line-height: 1.35;
+  text-wrap: balance;
   color: var(--text);
+  text-shadow: 0 0 18px rgba(247, 240, 225, 0.9);
 }
 
 .empty-state p {
   margin: 0;
-  font-size: 14px;
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: #4a4338;
+  text-shadow: 0 0 12px rgba(247, 240, 225, 0.95);
 }
 
 .message-group {
@@ -66,8 +84,8 @@
 .user-message .message-content {
   background: linear-gradient(
     135deg,
-    rgba(123, 92, 240, 0.09),
-    rgba(6, 178, 212, 0.06)
+    rgba(47, 79, 122, 0.09),
+    rgba(42, 140, 154, 0.06)
   );
   box-shadow: var(--nm-raised-sm);
   padding: 18px 20px;
@@ -159,7 +177,7 @@
 
 .input-form.dragging {
   box-shadow: var(--nm-raised), 0 0 0 2px var(--c-cyan),
-    0 0 26px rgba(6, 178, 212, 0.35);
+    0 0 26px rgba(42, 140, 154, 0.35);
 }
 
 .input-row {
@@ -282,18 +300,6 @@
   display: block;
 }
 
-.empty-state h2 {
-  background: linear-gradient(
-    100deg,
-    var(--c-violet),
-    var(--c-blue) 50%,
-    var(--c-teal)
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
 .attachment-previews {
   display: flex;
   flex-wrap: wrap;
@@ -333,7 +339,7 @@
 }
 
 .attachment-remove:hover {
-  color: #e05a6b;
+  color: #b8444a;
   box-shadow: var(--nm-inset-sm);
 }
 
@@ -358,8 +364,8 @@
 .context-meter.heavy {
   background: linear-gradient(
     135deg,
-    rgba(242, 163, 12, 0.12),
-    rgba(244, 84, 111, 0.09)
+    rgba(217, 162, 27, 0.12),
+    rgba(184, 68, 74, 0.09)
   );
   box-shadow: var(--nm-inset-sm);
   color: #9a6a0c;
@@ -381,7 +387,7 @@
   background: linear-gradient(135deg, var(--c-amber), var(--c-orange));
   border: none;
   border-radius: 999px;
-  box-shadow: 4px 5px 12px rgba(214, 150, 10, 0.4),
+  box-shadow: 4px 5px 12px rgba(190, 140, 30, 0.4),
     -3px -3px 9px var(--shadow-light);
   color: #fff;
   font-size: 12px;
@@ -483,7 +489,7 @@ a.file-chip:hover {
 
 .file-chip-remove:hover {
   background: var(--bg-sunken);
-  color: #e05a6b;
+  color: #b8444a;
 }
 
 .attachment-status {
@@ -497,7 +503,7 @@ a.file-chip:hover {
 
 .attachment-error {
   padding-left: 6px;
-  color: #d9566b;
+  color: #b8444a;
   font-size: 12px;
 }
 

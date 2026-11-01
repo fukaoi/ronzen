@@ -1,5 +1,6 @@
 import ModelIcon from './ModelIcon';
 import { providerOf, shortName } from '../models';
+import { useI18n } from '../i18n/useI18n';
 import './CouncilRoster.css';
 
 /**
@@ -7,6 +8,8 @@ import './CouncilRoster.css';
  * then the chairman once stage 3 has come back.
  */
 export default function CouncilRoster({ members, chairman }) {
+  const { t } = useI18n();
+
   if (!members || members.length === 0) {
     return null;
   }
@@ -14,7 +17,7 @@ export default function CouncilRoster({ members, chairman }) {
   return (
     <div className="council-roster">
       <div className="roster-group">
-        <span className="roster-caption">Council</span>
+        <span className="roster-caption">{t('roster.council')}</span>
         <div className="roster-members">
           {members.map((model) => (
             <div key={model} className="roster-member">
@@ -30,7 +33,7 @@ export default function CouncilRoster({ members, chairman }) {
 
       {chairman && (
         <div className="roster-group roster-chair">
-          <span className="roster-caption">Chairman</span>
+          <span className="roster-caption">{t('roster.chairman')}</span>
           <div className="roster-member">
             <span className="roster-crown">
               <ModelIcon model={chairman} size={20} raised />

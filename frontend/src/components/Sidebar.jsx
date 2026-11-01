@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Plus, Landmark, ScrollText, Trash2 } from 'lucide-react';
+import { Plus, Settings, Trash2 } from 'lucide-react';
+import ToriiIcon from './ToriiIcon';
+import { useI18n } from '../i18n/useI18n';
 import Logo from './Logo';
 import './Sidebar.css';
 
@@ -16,8 +18,9 @@ export default function Sidebar({
   onDeleteConversation,
   view,
   onShowMissions,
-  onShowRules,
+  onShowSettings,
 }) {
+  const { t } = useI18n();
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState('');
 
@@ -35,10 +38,10 @@ export default function Sidebar({
   };
 
   const confirmDelete = (conv) => {
-    const title = conv.title || 'New Conversation';
+    const title = conv.title || t('sidebar.untitled');
     if (
       window.confirm(
-        `Delete "${title}" and its ${conv.message_count} messages? This cannot be undone.`
+        t('sidebar.confirmDelete', { title, n: conv.message_count })
       )
     ) {
       onDeleteConversation(conv.id);
@@ -50,22 +53,29 @@ export default function Sidebar({
       <div className="sidebar-header">
         <div className="brand">
           <Logo size={44} />
-          <h1>LLM COUNCIL2</h1>
+          <div className="brand-text">
+            <h1>Ronzen</h1>
+            <span className="brand-sub">LLM Council</span>
+          </div>
+          <button
+            className="settings-btn"
+            onClick={onShowSettings}
+            title={t('common.settings')}
+            aria-label={t('common.settings')}
+          >
+            <Settings size={18} />
+          </button>
         </div>
         <button className="new-conversation-btn" onClick={onNewConversation}>
           <Plus size={16} strokeWidth={2.4} />
-          New Conversation
+          {t('sidebar.newConversation')}
         </button>
         <button
           className={`missions-btn ${view === 'missions' ? 'active' : ''}`}
           onClick={onShowMissions}
         >
-          <Landmark size={15} />
-          Missions β
-        </button>
-        <button className="missions-btn" onClick={onShowRules}>
-          <ScrollText size={15} />
-          Council Rules
+          <ToriiIcon size={16} />
+          {t('sidebar.missions')}
         </button>
       </div>
 
@@ -73,7 +83,7 @@ export default function Sidebar({
         className={`conversation-list ${view === 'missions' ? 'inactive' : ''}`}
       >
         {conversations.length === 0 ? (
-          <div className="no-conversations">No conversations yet</div>
+          <div className="no-conversations">{t('sidebar.none')}</div>
         ) : (
           conversations.map((conv) => (
             <div
@@ -102,25 +112,25 @@ export default function Sidebar({
                 />
               ) : (
                 <div className="conversation-title">
-                  {conv.title || 'New Conversation'}
+                  {conv.title || t('sidebar.untitled')}
                 </div>
               )}
               <div className="conversation-meta">
                 {conv.id === streamingId || conv.running ? (
                   <span className="conversation-running">
                     <span className="running-dot"></span>
-                    Consulting the council...
+                    {t('sidebar.consulting')}
                   </span>
                 ) : (
-                  `${conv.message_count} messages`
+                  t('sidebar.messages', { n: conv.message_count })
                 )}
                 {editingId !== conv.id && (
                   <span className="conversation-actions">
                     <button
                       type="button"
                       className="conversation-edit-btn"
-                      title="Rename"
-                      aria-label="Rename conversation"
+                      title={t('sidebar.rename')}
+                      aria-label={t('sidebar.renameAria')}
                       onClick={(e) => {
                         e.stopPropagation();
                         startEditing(conv);
@@ -141,8 +151,8 @@ export default function Sidebar({
                     <button
                       type="button"
                       className="conversation-edit-btn conversation-delete-btn"
-                      title="Delete"
-                      aria-label="Delete conversation"
+                      title={t('common.delete')}
+                      aria-label={t('sidebar.deleteAria')}
                       onClick={(e) => {
                         e.stopPropagation();
                         confirmDelete(conv);

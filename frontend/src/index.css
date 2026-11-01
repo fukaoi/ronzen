@@ -1,8 +1,11 @@
 :root {
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    'Roboto',
-    'Hiragino Sans', 'Noto Sans JP', 'Noto Sans CJK JP', 'Yu Gothic', 'Meiryo', sans-serif;
-  line-height: 1.5;
+  --font-sans: 'Noto Sans JP', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN',
+    'Yu Gothic', 'Meiryo', sans-serif;
+  --font-serif: 'Zen Old Mincho', 'Shippori Mincho', 'Hiragino Mincho ProN',
+    'Yu Mincho', serif;
+
+  font-family: var(--font-sans);
+  line-height: 1.6;
   font-weight: 400;
 
   font-synthesis: none;
@@ -10,67 +13,75 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* --- Neumorphic design tokens --- */
+  /* --- Wa design tokens ---
+     Washi paper, sumi ink and a vermilion seal. Surfaces sit on the paper
+     with a hairline and a soft shadow, like cards laid on a table. */
+  --bg: #f4eee0; /* 生成り */
+  --bg-sunken: #ebe3d0;
 
-  /* Every surface shares the page background; depth comes from shadows only.
-     Colour is carried by accents, gradients and tinted glows on top of it. */
-  --bg: #ecedfa;
-  --bg-sunken: #e3e5f6;
+  --text: #2b2622; /* 墨 */
+  --text-muted: #6b6254;
+  --text-faint: #a39a8a;
 
-  --text: #474b70;
-  --text-muted: #868bb4;
-  --text-faint: #a3a8ca;
+  --shadow-light: #fffaf0;
+  --shadow-dark: #cdc2ab;
 
-  --shadow-light: #ffffff;
-  --shadow-dark: #c3c6e8;
-
-  /* --- Hue scale ---
+  /* --- Hue scale: traditional Japanese colours ---
      Used to tell the council members, the stages and the rankings apart. */
-  --c-violet: #7b5cf0;
-  --c-indigo: #5b6ef5;
-  --c-blue: #2f8df5;
-  --c-cyan: #06b2d4;
-  --c-teal: #0fb9a4;
-  --c-green: #27c05e;
-  --c-lime: #8bc220;
-  --c-amber: #f2a30c;
-  --c-orange: #fb8030;
-  --c-rose: #f4546f;
-  --c-pink: #ea47a6;
+  --c-violet: #6b4c8a; /* 紫 */
+  --c-indigo: #2f4f7a; /* 藍 */
+  --c-blue: #3d6a98; /* 縹 */
+  --c-cyan: #2a8c9a; /* 浅葱 */
+  --c-teal: #3f8f78; /* 青磁 */
+  --c-green: #5b8a3c; /* 若竹 */
+  --c-lime: #8a9a3c; /* 抹茶 */
+  --c-amber: #d9a21b; /* 山吹 */
+  --c-orange: #d8702a; /* 柿 */
+  --c-rose: #b8444a; /* 茜 */
+  --c-pink: #c8587a; /* 躑躅 */
 
-  --accent: #6d5cf0;
-  --accent-hover: #5947dd;
-  --accent-soft: rgba(109, 92, 240, 0.13);
-  --accent-gradient: linear-gradient(135deg, #8257f5 0%, #4f8cff 100%);
+  --accent: #c8362d; /* 朱 */
+  --accent-hover: #a82a23;
+  --accent-soft: rgba(200, 54, 45, 0.12);
+  --accent-gradient: linear-gradient(135deg, #c8362d 0%, #e0652e 100%);
 
   /* One hue per stage, so each card is recognisable at a glance */
-  --stage1-color: var(--c-cyan);
+  --stage1-color: var(--c-indigo);
   --stage2-color: var(--c-amber);
-  --stage3-color: var(--c-violet);
+  --stage3-color: var(--accent);
 
-  /* Raised: light from the top-left, shadow to the bottom-right */
-  --nm-raised: 6px 6px 14px var(--shadow-dark),
-    -6px -6px 14px var(--shadow-light);
-  --nm-raised-sm: 3px 3px 7px var(--shadow-dark),
-    -3px -3px 7px var(--shadow-light);
-  --nm-raised-lg: 10px 10px 24px var(--shadow-dark),
-    -10px -10px 24px var(--shadow-light);
+  /* Surfaces: a hairline plus a soft shadow. The "nm" names are kept from the
+     earlier design so every component picks the new look up. */
+  --nm-raised: 0 0 0 1px rgba(110, 90, 60, 0.16),
+    0 4px 14px rgba(80, 60, 30, 0.1);
+  --nm-raised-sm: 0 0 0 1px rgba(110, 90, 60, 0.15),
+    0 2px 6px rgba(80, 60, 30, 0.08);
+  --nm-raised-lg: 0 0 0 1px rgba(110, 90, 60, 0.18),
+    0 8px 26px rgba(80, 60, 30, 0.14);
 
-  /* Pressed / inset: the same light source, carved inwards */
-  --nm-inset: inset 4px 4px 9px var(--shadow-dark),
-    inset -4px -4px 9px var(--shadow-light);
-  --nm-inset-sm: inset 2px 2px 5px var(--shadow-dark),
-    inset -2px -2px 5px var(--shadow-light);
+  /* Pressed / inset: pressed into the paper */
+  --nm-inset: inset 0 0 0 1px rgba(110, 90, 60, 0.18),
+    inset 0 2px 6px rgba(80, 60, 30, 0.14);
+  --nm-inset-sm: inset 0 0 0 1px rgba(110, 90, 60, 0.15),
+    inset 0 1px 3px rgba(80, 60, 30, 0.12);
 
   /* A raised element that also glows in its own colour */
-  --nm-accent: 5px 7px 16px rgba(93, 74, 222, 0.42),
-    -4px -4px 12px var(--shadow-light);
+  --nm-accent: 0 3px 10px rgba(180, 45, 35, 0.35),
+    0 0 0 1px rgba(150, 30, 25, 0.3);
 
-  --radius-lg: 24px;
-  --radius-md: 16px;
-  --radius-sm: 12px;
+  --radius-lg: 12px;
+  --radius-md: 8px;
+  --radius-sm: 6px;
 
   --ease: 0.2s ease;
+}
+
+/* Chinese needs its own glyphs: the Japanese faces would draw the Han
+   characters in Japanese forms, and some are missing altogether */
+:root[lang='zh-CN'] {
+  --font-sans: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB',
+    sans-serif;
+  --font-serif: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
 }
 
 * {
@@ -83,7 +94,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: var(--bg);
+  background: var(--bg) url('/washi.svg');
   color: var(--text);
 }
 
@@ -139,8 +150,9 @@ body {
 .markdown-content h4,
 .markdown-content h5,
 .markdown-content h6 {
+  font-family: var(--font-serif);
   margin: 20px 0 10px 0;
-  color: #3a2f6b;
+  color: #1f3550;
   font-weight: 600;
 }
 
@@ -172,7 +184,7 @@ body {
 }
 
 .markdown-content strong {
-  color: #3f3576;
+  color: #2f4f7a;
 }
 
 .markdown-content ul,
@@ -216,7 +228,7 @@ body {
   background: none;
   box-shadow: none;
   padding: 0;
-  color: #4f5480;
+  color: #4a4338;
 }
 
 .markdown-content blockquote {
@@ -240,7 +252,7 @@ body {
 
 .markdown-content th {
   background: var(--accent-soft);
-  color: #3f3576;
+  color: #2f4f7a;
 }
 
 .markdown-content hr {
@@ -249,10 +261,10 @@ body {
   border-radius: 1px;
   background: linear-gradient(
     90deg,
-    var(--c-violet),
-    var(--c-cyan),
+    var(--c-indigo),
+    var(--accent),
     var(--c-amber)
   );
-  opacity: 0.35;
+  opacity: 0.4;
   margin: 20px 0;
 }

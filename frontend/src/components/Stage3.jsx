@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import ModelIcon from './ModelIcon';
 import StageBadge from './StageBadge';
+import { useI18n } from '../i18n/useI18n';
 import { shortName } from '../models';
 import './Stage3.css';
 
 export default function Stage3({ finalResponse, solo = false }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
   if (!finalResponse) {
@@ -40,7 +43,7 @@ export default function Stage3({ finalResponse, solo = false }) {
     <div className="stage stage3">
       <h3 className="stage-title">
         <StageBadge stage={3} />
-        {solo ? 'Chairman: Direct Answer' : 'Stage 3: Final Council Answer'}
+        {solo ? t('stage.chairmanDirect') : t('stage.3')}
       </h3>
       <div className="final-response">
         <div className="final-toolbar">
@@ -48,18 +51,18 @@ export default function Stage3({ finalResponse, solo = false }) {
             <span className="chairman-icon">
               <ModelIcon model={finalResponse.model} size={14} />
             </span>
-            Chairman: {shortName(finalResponse.model)}
+            {t('stage.chairman', { name: shortName(finalResponse.model) })}
           </div>
 
           <div className="final-actions">
             <button className={`copy-button ${copied ? 'copied' : ''}`} onClick={handleCopy}>
-              {copied ? 'Copied!' : 'Copy'}
+              {copied ? t('common.copied') : t('common.copy')}
             </button>
           </div>
         </div>
 
         <div className="final-text markdown-content">
-          <ReactMarkdown>{finalResponse.response}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{finalResponse.response}</ReactMarkdown>
         </div>
       </div>
     </div>

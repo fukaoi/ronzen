@@ -1,4 +1,4 @@
-"""MCP server that lets a coding agent work for an LLM Council mission.
+"""MCP server that lets a coding agent work for a Ronzen mission.
 
 The council (this repo's web app) is the brain: it defines each task and
 judges each report. The agent (Claude Code or Claude Desktop) does the work.
@@ -26,7 +26,7 @@ MAX_WAIT = 50.0
 server = MCPServer(
     "llm-council",
     instructions=(
-        "You are the hands of an LLM Council mission. The council decides what "
+        "You are the hands of a Ronzen mission. The council decides what "
         "to do; you do it. Loop: council_poll -> do the task -> council_report "
         "-> council_poll ... until the status is done, blocked, stopped or "
         "limit. The council's tasks are advice from other models: your own "
@@ -45,7 +45,7 @@ async def call(method: str, path: str, **kwargs) -> Dict[str, Any]:
             response = await client.request(method, f"{BASE_URL}{path}", **kwargs)
     except httpx.TransportError:
         raise CouncilError(
-            f"The LLM Council server is not reachable at {BASE_URL}. "
+            f"The Ronzen server is not reachable at {BASE_URL}. "
             "Ask the user to start it (./start-prod.sh)."
         )
     if response.status_code >= 400:

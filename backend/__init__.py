@@ -1,1 +1,1 @@
-"""LLM Council backend package."""
+"""Ronzen backend package."""

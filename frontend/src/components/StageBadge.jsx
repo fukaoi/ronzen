@@ -1,9 +1,9 @@
-import { MessagesSquare, Scale, Crown } from 'lucide-react';
+import { MessagesSquare, Scale, Stamp } from 'lucide-react';
 
 const STAGE_ICONS = {
   1: MessagesSquare,
   2: Scale,
-  3: Crown,
+  3: Stamp,
 };
 
 export default function StageBadge({ stage, size = 17 }) {

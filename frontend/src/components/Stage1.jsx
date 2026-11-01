@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import ModelIcon from './ModelIcon';
 import StageBadge from './StageBadge';
+import { useI18n } from '../i18n/useI18n';
 import { shortName } from '../models';
 import './Stage1.css';
 
 export default function Stage1({ responses }) {
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState(0);
 
   if (!responses || responses.length === 0) {
@@ -16,7 +19,7 @@ export default function Stage1({ responses }) {
     <div className="stage stage1">
       <h3 className="stage-title">
         <StageBadge stage={1} />
-        Stage 1: Individual Responses
+        {t('stage.1')}
       </h3>
 
       <div className="tabs">
@@ -38,7 +41,7 @@ export default function Stage1({ responses }) {
           {responses[activeTab].model}
         </div>
         <div className="response-text markdown-content">
-          <ReactMarkdown>{responses[activeTab].response}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{responses[activeTab].response}</ReactMarkdown>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 /**
- * Two overlapping speech bubbles on the app's violet-to-teal gradient: models
- * talking it over. public/logo.svg is the same drawing, used as the favicon.
+ * An ensō, the brush circle of Zen, drawn in sumi ink on a paper roundel,
+ * with three vermilion dots of conversation inside: several minds talking
+ * in one calm round. public/logo.svg is the same drawing, used as the favicon.
  */
 export default function Logo({ size = 30, typing = false }) {
   return (
@@ -10,28 +11,18 @@ export default function Logo({ size = 30, typing = false }) {
       height={size}
       viewBox="0 0 32 32"
       role="img"
-      aria-label="LLM Council2"
+      aria-label="Ronzen"
     >
-      <defs>
-        <linearGradient id="logo-gradient" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#8257f5" />
-          <stop offset="0.55" stopColor="#2f8df5" />
-          <stop offset="1" stopColor="#0fb9a4" />
-        </linearGradient>
-      </defs>
-      <circle cx="16" cy="16" r="15" fill="url(#logo-gradient)" />
-      <g fill="#fff" opacity="0.6">
-        <rect x="13" y="13" width="14" height="10" rx="3.5" />
-        <path d="M23 22.5 L24.5 27 L19 22.5 Z" />
+      <circle cx="16" cy="16" r="15.5" fill="#f4eee0" stroke="#cdc2ab" strokeWidth="0.8" />
+      <g fill="none" stroke="#2b2622" strokeLinecap="round">
+        <path d="M22.43 8.34 A10 10 0 0 1 16 26" strokeWidth="4.2" />
+        <path d="M21 24.66 A10 10 0 0 1 6.6 12.58" strokeWidth="3.2" />
+        <path d="M6.15 17.74 A10 10 0 0 1 14.26 6.15" strokeWidth="2" />
       </g>
-      <g fill="#fff">
-        <rect x="5" y="6" width="16" height="12" rx="4" />
-        <path d="M8 17.5 L8 23 L13.5 17.5 Z" />
-      </g>
-      <g fill="#6d5cf0">
-        <circle className="logo-dot" cx="9.5" cy="12" r="1.3" />
-        <circle className="logo-dot" cx="13" cy="12" r="1.3" />
-        <circle className="logo-dot" cx="16.5" cy="12" r="1.3" />
+      <g fill="#c8362d">
+        <circle className="logo-dot" cx="11.8" cy="16" r="1.8" />
+        <circle className="logo-dot" cx="16" cy="16" r="1.8" />
+        <circle className="logo-dot" cx="20.2" cy="16" r="1.8" />
       </g>
     </svg>
   );

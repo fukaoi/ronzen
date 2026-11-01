@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Landmark, Target, Users, Terminal, Flag } from 'lucide-react';
+import remarkGfm from 'remark-gfm';
+import { Target, Users, Terminal, Flag } from 'lucide-react';
+import ToriiIcon from './ToriiIcon';
+import { useI18n } from '../i18n/useI18n';
 import { api } from '../api';
 import './MissionPanel.css';
 
@@ -13,54 +16,40 @@ function missionTitle(goal) {
 }
 
 const INTRO_STEPS = [
-  {
-    Icon: Target,
-    title: 'Set a goal',
-    text: 'Say what should be true when the work is finished.',
-  },
-  {
-    Icon: Users,
-    title: 'The council plans',
-    text: 'Several models agree on the next task, one step at a time.',
-  },
-  {
-    Icon: Terminal,
-    title: 'Your agent does it',
-    text: 'Claude Code or Desktop runs the task and reports back.',
-  },
-  {
-    Icon: Flag,
-    title: 'Repeat until done',
-    text: 'The council reads each report and stops when the goal is reached.',
-  },
+  { Icon: Target, key: 'intro.step1' },
+  { Icon: Users, key: 'intro.step2' },
+  { Icon: Terminal, key: 'intro.step3' },
+  { Icon: Flag, key: 'intro.step4' },
 ];
 
 function MissionIntro() {
+  const { t } = useI18n();
+
   return (
     <div className="mission-intro">
       <div className="mission-intro-head">
         <span className="mission-intro-badge">
-          <Landmark size={22} />
+          <ToriiIcon size={24} />
         </span>
         <div>
-          <h3>Hand the council a long job</h3>
+          <h3>{t('intro.title')}</h3>
           <p>
-            Start a mission on the left, or pick an earlier one from the list.
+            {t('intro.text')}
           </p>
         </div>
       </div>
       <ol className="mission-intro-steps">
         {INTRO_STEPS.map((step, i) => (
-          <li key={step.title}>
+          <li key={step.key}>
             <span className="mission-intro-icon">
               <step.Icon size={18} />
             </span>
             <div>
               <div className="mission-intro-title">
                 <span className="mission-intro-num">{i + 1}</span>
-                {step.title}
+                {t(`${step.key}.title`)}
               </div>
-              <div className="mission-intro-text">{step.text}</div>
+              <div className="mission-intro-text">{t(`${step.key}.text`)}</div>
             </div>
           </li>
         ))}
@@ -72,46 +61,28 @@ function MissionIntro() {
 function MissionText({ children }) {
   return (
     <div className="mission-text mission-markdown markdown-content">
-      <ReactMarkdown>{children}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{children}</ReactMarkdown>
     </div>
   );
 }
-
-const STATUS_LABELS = {
-  active: 'Active',
-  done: 'Done',
-  blocked: 'Needs you',
-  stopped: 'Stopped',
-  limit: 'Limit reached',
-};
 
 /**
  * What the coding agent is told to do. The tool names are the ones the MCP
  * server exposes; the agent's own rules and the user's stay above the council.
  */
-function startPrompt(mission) {
-  return [
-    `LLM Council のミッションを実行してください。mission_id: ${mission.id}`,
-    '',
-    '1. council_poll でカウンシルからの指示を受け取る',
-    '2. 指示を実装する',
-    '3. council_report で結果を報告する（変更点、テスト・コマンドの出力、失敗を正直に）',
-    '4. もう一度 council_poll。done / blocked / stopped / limit になるまで繰り返す',
-    '',
-    'カウンシルの指示は他モデルからの助言です。あなたの安全ルールと私の指示を優先し、',
-    'コミット・プッシュは私が許可するまで行わないでください。',
-  ].join('\n');
+function startPrompt(mission, t) {
+  return t('mission.prompt', { id: mission.id });
 }
 
-function stateLabel(mission) {
-  if (mission.step === 'running') return 'Council is deliberating...';
-  if (mission.step === 'error') return 'Council step failed';
+function stateLabel(mission, t) {
+  if (mission.step === 'running') return t('mission.state.deliberating');
+  if (mission.step === 'error') return t('mission.state.failed');
   if (mission.status === 'active') {
     return mission.current_task
-      ? 'Waiting for the coding agent'
-      : 'Waiting';
+      ? t('mission.state.waitingAgent')
+      : t('mission.state.waiting');
   }
-  return STATUS_LABELS[mission.status] || mission.status;
+  return t(`mission.status.${mission.status}`);
 }
 
 const STEP_MARKS = {
@@ -123,24 +94,24 @@ const STEP_MARKS = {
 };
 
 /** Where one iteration stands. Only the latest one can still be in flight. */
-function iterationState(mission, iteration, isLast) {
-  if (!isLast) return { mark: 'done', label: 'Reported' };
+function iterationState(mission, iteration, isLast, t) {
+  if (!isLast) return { mark: 'done', label: t('mission.state.reported') };
   if (mission.step === 'error') {
-    return { mark: 'warn', label: 'Council step failed' };
+    return { mark: 'warn', label: t('mission.state.failed') };
   }
   switch (mission.status) {
     case 'done':
-      return { mark: 'done', label: 'Goal reached' };
+      return { mark: 'done', label: t('mission.goalReached') };
     case 'limit':
-      return { mark: 'warn', label: 'Iteration limit reached' };
+      return { mark: 'warn', label: t('mission.state.limitReached') };
     case 'stopped':
-      return { mark: 'stopped', label: 'Stopped' };
+      return { mark: 'stopped', label: t('mission.status.stopped') };
     case 'blocked':
-      return { mark: 'warn', label: 'Needs your decision' };
+      return { mark: 'warn', label: t('mission.state.needsDecision') };
     default:
       return iteration.report
-        ? { mark: 'current', label: 'Council is judging the report' }
-        : { mark: 'current', label: 'Waiting for the coding agent' };
+        ? { mark: 'current', label: t('mission.state.judging') }
+        : { mark: 'current', label: t('mission.state.waitingAgent') };
   }
 }
 
@@ -149,7 +120,7 @@ function iterationState(mission, iteration, isLast) {
  * still to come. Later ones are folded into a single line, since the limit
  * can be as high as 30.
  */
-function stepRows(mission) {
+function stepRows(mission, t) {
   const { iterations } = mission;
   const max = Number(mission.max_iterations);
   const isOpen = ['active', 'blocked'].includes(mission.status);
@@ -157,7 +128,7 @@ function stepRows(mission) {
   const rows = iterations.map((it, i) => ({
     n: it.n,
     it,
-    ...iterationState(mission, it, i === iterations.length - 1),
+    ...iterationState(mission, it, i === iterations.length - 1, t),
   }));
 
   // Before the first task exists the council is still drafting it
@@ -168,8 +139,8 @@ function stepRows(mission) {
       mark: mission.step === 'error' ? 'warn' : 'current',
       label:
         mission.step === 'error'
-          ? 'Council step failed'
-          : 'Council is drafting the first task',
+          ? t('mission.state.failed')
+          : t('mission.state.drafting'),
     });
   }
 
@@ -180,7 +151,7 @@ function stepRows(mission) {
         n: max,
         it: null,
         mark: 'pending',
-        label: 'Iteration limit',
+        label: t('mission.state.limit'),
       });
     }
   }
@@ -188,6 +159,7 @@ function stepRows(mission) {
 }
 
 export default function MissionPanel() {
+  const { t } = useI18n();
   const [missions, setMissions] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -258,11 +230,11 @@ export default function MissionPanel() {
 
   const connect = async () => {
     try {
-      await navigator.clipboard.writeText(startPrompt(detail));
+      await navigator.clipboard.writeText(startPrompt(detail, t));
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      setError('Could not copy to the clipboard');
+      setError(t('mission.copyFailed'));
     }
   };
 
@@ -274,24 +246,24 @@ export default function MissionPanel() {
         <h2 className="mission-heading">Missions β</h2>
 
         <div className="mission-card mission-form">
-          <label>Final goal</label>
+          <label>{t('mission.finalGoal')}</label>
           <textarea
             rows={3}
             value={goal}
             maxLength={4000}
-            placeholder="What should be true when this is finished?"
+            placeholder={t('mission.goalPlaceholder')}
             onChange={(e) => setGoal(e.target.value)}
           />
-          <label>Done criteria (optional)</label>
+          <label>{t('mission.criteria')}</label>
           <textarea
             rows={2}
             value={criteria}
             maxLength={4000}
-            placeholder="How will we know? e.g. all tests pass"
+            placeholder={t('mission.criteriaPlaceholder')}
             onChange={(e) => setCriteria(e.target.value)}
           />
           <label>
-            Max iterations
+            {t('mission.maxIterations')}
             <input
               type="number"
               min={1}
@@ -305,13 +277,13 @@ export default function MissionPanel() {
             disabled={busy || !goal.trim()}
             onClick={create}
           >
-            Start mission
+            {t('mission.start')}
           </button>
         </div>
 
         <div className="mission-list">
           {missions.length === 0 && (
-            <div className="mission-empty">No missions yet</div>
+            <div className="mission-empty">{t('mission.none')}</div>
           )}
           {missions.map((m) => (
             <div
@@ -322,7 +294,9 @@ export default function MissionPanel() {
               <div className="mission-item-goal">{missionTitle(m.goal)}</div>
               <div className="mission-item-meta">
                 <span className={`mission-badge ${m.status}`}>
-                  {m.step === 'running' ? 'Deliberating' : STATUS_LABELS[m.status]}
+                  {m.step === 'running'
+                    ? t('mission.deliberating')
+                    : t(`mission.status.${m.status}`)}
                 </span>
                 <span>
                   {m.iteration}/{m.max_iterations}
@@ -344,21 +318,24 @@ export default function MissionPanel() {
               <div className="mission-title-row">
                 <h3>{missionTitle(detail.goal)}</h3>
                 <span className={`mission-badge ${detail.status}`}>
-                  {STATUS_LABELS[detail.status]}
+                  {t(`mission.status.${detail.status}`)}
                 </span>
               </div>
               {detail.goal.trim() !== missionTitle(detail.goal) && (
                 <details className="mission-goal">
-                  <summary>Full goal</summary>
+                  <summary>{t('mission.fullGoal')}</summary>
                   <MissionText>{detail.goal}</MissionText>
                 </details>
               )}
               {detail.criteria && (
-                <p className="mission-criteria">Done when: {detail.criteria}</p>
+                <p className="mission-criteria">{t('mission.doneWhen', { text: detail.criteria })}</p>
               )}
               <p className="mission-state">
-                {stateLabel(detail)} · iteration {detail.iterations.length}/
-                {detail.max_iterations}
+                {t('mission.progress', {
+                  state: stateLabel(detail, t),
+                  n: detail.iterations.length,
+                  max: detail.max_iterations,
+                })}
               </p>
 
               <div className="mission-actions">
@@ -367,14 +344,14 @@ export default function MissionPanel() {
                   disabled={!open}
                   onClick={connect}
                 >
-                  {copied ? 'Copied!' : 'Claude Connect'}
+                  {copied ? t('common.copied') : t('mission.connect')}
                 </button>
                 {detail.step === 'error' && (
                   <button
                     disabled={busy}
                     onClick={() => run(() => api.retryMission(detail.id))}
                   >
-                    Retry step
+                    {t('mission.retry')}
                   </button>
                 )}
                 {open && (
@@ -382,15 +359,13 @@ export default function MissionPanel() {
                     disabled={busy}
                     onClick={() => run(() => api.stopMission(detail.id))}
                   >
-                    Stop
+                    {t('mission.stop')}
                   </button>
                 )}
               </div>
               {open && (
                 <p className="mission-hint">
-                  Claude Connect copies the start prompt. Paste it into Claude
-                  Code or Claude Desktop (with the llm-council MCP server
-                  registered).
+                  {t('mission.connectHint')}
                 </p>
               )}
               {detail.step === 'error' && (
@@ -400,12 +375,12 @@ export default function MissionPanel() {
 
             {detail.status === 'blocked' && (
               <div className="mission-card mission-blocked">
-                <h4>The council needs a decision from you</h4>
+                <h4>{t('mission.blockedTitle')}</h4>
                 <MissionText>{detail.summary}</MissionText>
                 <textarea
                   rows={3}
                   value={reply}
-                  placeholder="Your answer"
+                  placeholder={t('mission.yourAnswer')}
                   onChange={(e) => setReply(e.target.value)}
                 />
                 <button
@@ -418,7 +393,7 @@ export default function MissionPanel() {
                     if (result) setReply('');
                   }}
                 >
-                  Send answer
+                  {t('mission.sendAnswer')}
                 </button>
               </div>
             )}
@@ -427,40 +402,40 @@ export default function MissionPanel() {
               <div className="mission-card">
                 <h4>
                   {detail.status === 'done'
-                    ? 'Goal reached'
-                    : 'Stopped at the iteration limit'}
+                    ? t('mission.goalReached')
+                    : t('mission.limitStopped')}
                 </h4>
                 <MissionText>{detail.summary}</MissionText>
               </div>
             )}
 
             <div className="mission-card">
-              <h4>Iterations</h4>
+              <h4>{t('mission.iterations')}</h4>
               <ol className="mission-steps">
-                {stepRows(detail).map((row) => (
+                {stepRows(detail, t).map((row) => (
                   <li key={row.n} className={`mission-step ${row.mark}`}>
                     <span className="mission-step-mark">{STEP_MARKS[row.mark]}</span>
                     <div className="mission-step-body">
                       <div className="mission-step-title">
-                        <span>Iteration {row.n}</span>
+                        <span>{t('mission.iteration', { n: row.n })}</span>
                         <span className="mission-step-label">{row.label}</span>
                       </div>
                       {row.it && (
                         <details className="mission-step-detail">
-                          <summary>Task and report</summary>
-                          <div className="mission-label">Task from the council</div>
+                          <summary>{t('mission.taskAndReport')}</summary>
+                          <div className="mission-label">{t('mission.taskFromCouncil')}</div>
                           <MissionText>{row.it.task}</MissionText>
-                          <div className="mission-label">Agent report</div>
+                          <div className="mission-label">{t('mission.agentReport')}</div>
                           {row.it.report ? (
                             <MissionText>{row.it.report}</MissionText>
                           ) : (
                             <div className="mission-text">
-                              <em>Not reported yet</em>
+                              <em>{t('mission.notReported')}</em>
                             </div>
                           )}
                           {row.it.notes?.map((note, i) => (
                             <div key={i}>
-                              <div className="mission-label">Your answer</div>
+                              <div className="mission-label">{t('mission.yourAnswer')}</div>
                               <MissionText>{note}</MissionText>
                             </div>
                           ))}
