@@ -221,6 +221,21 @@ export const api = {
   },
 
   /**
+   * Remaining OpenRouter credits and recent spending.
+   * @param {boolean} fresh - Skip the server's short cache
+   */
+  async getBalance(fresh = false) {
+    const response = await fetch(
+      `${API_BASE}/api/openrouter/balance${fresh ? '?fresh=true' : ''}`
+    );
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      throw new Error(error?.detail || 'Failed to load the balance');
+    }
+    return response.json();
+  },
+
+  /**
    * Standing instructions every council model receives with each question.
    */
   async getInstructions() {

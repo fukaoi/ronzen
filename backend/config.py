@@ -10,8 +10,9 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 # Council members - list of OpenRouter model identifiers
 
-# OpenRouter API endpoint
-OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+# OpenRouter API endpoints
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+OPENROUTER_API_URL = f"{OPENROUTER_BASE_URL}/chat/completions"
 
 # Data directory for conversation storage
 DATA_DIR = "data/conversations"

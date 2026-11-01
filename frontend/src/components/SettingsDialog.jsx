@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { ScrollText, Languages, X } from 'lucide-react';
+import { ScrollText, Languages, Wallet, X } from 'lucide-react';
 import RulesSection from './RulesSection';
 import LanguageSection from './LanguageSection';
+import BalanceSection from './BalanceSection';
 import { useI18n } from '../i18n/useI18n';
 import './SettingsDialog.css';
 
@@ -9,6 +10,7 @@ import './SettingsDialog.css';
 const SECTIONS = [
   { id: 'rules', labelKey: 'settings.rules', icon: <ScrollText size={16} />, Component: RulesSection },
   { id: 'language', labelKey: 'settings.language', icon: <Languages size={16} />, Component: LanguageSection },
+  { id: 'balance', labelKey: 'settings.balance', icon: <Wallet size={16} />, Component: BalanceSection },
 ];
 
 export default function SettingsDialog({ onClose }) {

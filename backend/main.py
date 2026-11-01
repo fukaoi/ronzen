@@ -16,6 +16,7 @@ import json
 import asyncio
 
 from . import storage, missions, instructions
+from .openrouter import fetch_balance, BalanceError
 from .config import (
     HOST,
     PORT,
@@ -788,6 +789,15 @@ async def follow_council_run(conversation_id: str):
 class InstructionsRequest(BaseModel):
     """Standing instructions for the council."""
     text: str
+
+
+@app.get("/api/openrouter/balance")
+async def openrouter_balance(fresh: bool = False):
+    """Remaining OpenRouter credits and recent spending, for the settings page."""
+    try:
+        return await fetch_balance(fresh)
+    except BalanceError as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 @app.get("/api/instructions")
