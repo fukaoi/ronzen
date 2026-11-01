@@ -20,9 +20,12 @@ const SEND_SHORTCUT =
     : 'Ctrl+Enter';
 
 // Scrolling this far in one direction brings out the matching jump button (up
-// shows "top", down shows "bottom"); within SCROLL_END_PX of an end it goes away
+// shows "top", down shows "bottom"); within SCROLL_END_PX of an end it goes away.
+// A move back of less than SCROLL_REVERSAL_PX is jitter, not a change of
+// direction: touch screens report small nudges against the swipe all the time.
 const SCROLL_DIRECTION_PX = 120;
 const SCROLL_END_PX = 100;
+const SCROLL_REVERSAL_PX = 12;
 
 const ASK_MODES = [
   {
@@ -99,8 +102,8 @@ export default function ChatInterface({
   const messagesRef = useRef(null);
   const fileInputRef = useRef(null);
   const [scrollButtons, setScrollButtons] = useState({ top: false, bottom: false });
-  const lastScrollTop = useRef(0);
-  const scrollRun = useRef(0);
+  // The current run of scrolling: its direction, where it began, and how far it has got
+  const scrollRun = useRef({ direction: 'down', start: 0, furthest: 0 });
   const ignoreScrollUntil = useRef(0);
 
   const scrollToBottom = () => {
@@ -119,21 +122,32 @@ export default function ChatInterface({
 
     const top = el.scrollTop;
     const fromBottom = el.scrollHeight - top - el.clientHeight;
-    const delta = top - lastScrollTop.current;
-    lastScrollTop.current = top;
+    const run = scrollRun.current;
 
-    if (delta !== 0 && Date.now() >= ignoreScrollUntil.current) {
-      scrollRun.current =
-        Math.sign(delta) === Math.sign(scrollRun.current) ? scrollRun.current + delta : delta;
+    if (Date.now() < ignoreScrollUntil.current) {
+      // Not the reader's scrolling: begin again from wherever the page is
+      scrollRun.current = { direction: 'down', start: top, furthest: top };
+    } else if (run.direction === 'down') {
+      if (top > run.furthest) run.furthest = top;
+      else if (run.furthest - top >= SCROLL_REVERSAL_PX) {
+        scrollRun.current = { direction: 'up', start: run.furthest, furthest: top };
+      }
+    } else if (top < run.furthest) {
+      run.furthest = top;
+    } else if (top - run.furthest >= SCROLL_REVERSAL_PX) {
+      scrollRun.current = { direction: 'down', start: run.furthest, furthest: top };
     }
+
+    const { direction, start, furthest } = scrollRun.current;
+    const travelled = Math.abs(furthest - start);
 
     setScrollButtons((prev) => {
       let showTop = prev.top;
       let showBottom = prev.bottom;
-      if (scrollRun.current <= -SCROLL_DIRECTION_PX) {
+      if (direction === 'up' && travelled >= SCROLL_DIRECTION_PX) {
         showTop = true;
         showBottom = false;
-      } else if (scrollRun.current >= SCROLL_DIRECTION_PX) {
+      } else if (direction === 'down' && travelled >= SCROLL_DIRECTION_PX) {
         showTop = false;
         showBottom = true;
       }
@@ -148,7 +162,6 @@ export default function ChatInterface({
   useEffect(() => {
     // Following the conversation down is not the reader scrolling
     ignoreScrollUntil.current = Date.now() + 1500;
-    scrollRun.current = 0;
     scrollToBottom();
   }, [conversation]);
 

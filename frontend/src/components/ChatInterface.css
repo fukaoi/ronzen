@@ -40,7 +40,9 @@
     color var(--ease);
 }
 
-.scroll-fab-top { top: 6px; }
+/* Only one of the two shows at a time, so they share a spot, down by the
+   composer where a thumb reaches and where a zoomed-in page still shows it */
+.scroll-fab-top,
 .scroll-fab-bottom { bottom: 6px; }
 
 .scroll-fab:hover {
