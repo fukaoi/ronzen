@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="docs/top-design.png" alt="Ronzen: Mt. Fuji, the sun and cherry blossoms, with the tagline Multiple Minds. Deeper Thinking." width="560">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/banner-dark.png">
+    <img src="docs/banner-light.png" alt="Ronzen - LLM Council. Multiple Minds. Deeper Thinking. Mt. Fuji, the sun and cherry blossoms." width="800">
+  </picture>
 </p>
 
 # Ronzen - LLM Council
