@@ -37,7 +37,7 @@ For a quick follow-up that does not need a full deliberation, switch the box to 
 - Conversations created by missions are tinted in the list.
 
 **Missions (beta): the council as the brain, a coding agent as the hands**
-- Give the council a goal and done criteria. It writes each task and judges each report; Claude Code or Claude Desktop does the work through an MCP server, until the council says the goal is reached.
+- Give the council a goal. It writes each task and judges each report; Claude Code or Claude Desktop does the work through an MCP server, until the council says the goal is reached.
 - Goals and reports are rendered as Markdown. You can stop a mission, retry a failed step, or answer when the council is blocked and needs a decision.
 
 **Running it**
@@ -112,12 +112,12 @@ npm --prefix frontend run dev
 1. Register the MCP server once. User scope makes it available in any project:
 
    ```bash
-   claude mcp add --scope user llm-council -- uv run --directory /path/to/ronzen python -m backend.mcp_server
+   claude mcp add --scope user ronzen -- uv run --directory /path/to/ronzen python -m backend.mcp_server
    ```
 
    For Claude Desktop, add the same command under `mcpServers` in `claude_desktop_config.json`.
 2. Keep the app running (`./start.sh`). If it is not on `http://127.0.0.1:8001`, set `COUNCIL_URL` for the MCP server.
-3. Open **Missions**, enter the final goal and, optionally, the done criteria, and press **Start mission**. The council drafts the first task.
+3. Open **Missions**, enter the final goal and press **Start mission**. The council drafts the first task.
 4. Press **Claude Connect**. It copies a start prompt; paste it into Claude Code or Desktop in the project to work on.
 5. The agent loops `council_poll`, does the work, then calls `council_report`. Every deliberation is saved as a normal conversation, so you can read it from the sidebar.
 

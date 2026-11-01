@@ -165,7 +165,6 @@ export default function MissionPanel() {
   const [detail, setDetail] = useState(null);
 
   const [goal, setGoal] = useState('');
-  const [criteria, setCriteria] = useState('');
   const [maxIterations, setMaxIterations] = useState(8);
   const [reply, setReply] = useState('');
   const [error, setError] = useState('');
@@ -219,11 +218,10 @@ export default function MissionPanel() {
   const create = async () => {
     if (!goal.trim()) return;
     const created = await run(() =>
-      api.createMission(goal.trim(), criteria.trim(), Number(maxIterations))
+      api.createMission(goal.trim(), Number(maxIterations))
     );
     if (created) {
       setGoal('');
-      setCriteria('');
       setSelectedId(created.id);
     }
   };
@@ -253,14 +251,6 @@ export default function MissionPanel() {
             maxLength={4000}
             placeholder={t('mission.goalPlaceholder')}
             onChange={(e) => setGoal(e.target.value)}
-          />
-          <label>{t('mission.criteria')}</label>
-          <textarea
-            rows={2}
-            value={criteria}
-            maxLength={4000}
-            placeholder={t('mission.criteriaPlaceholder')}
-            onChange={(e) => setCriteria(e.target.value)}
           />
           <label>
             {t('mission.maxIterations')}

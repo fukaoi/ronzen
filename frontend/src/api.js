@@ -254,10 +254,9 @@ export const api = {
     return response.json();
   },
 
-  async createMission(goal, criteria, maxIterations) {
+  async createMission(goal, maxIterations) {
     return postMission('/api/missions', {
       goal,
-      criteria,
       max_iterations: maxIterations,
     });
   },

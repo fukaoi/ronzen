@@ -24,7 +24,7 @@ POLL_INTERVAL = 2.0
 MAX_WAIT = 50.0
 
 server = MCPServer(
-    "llm-council",
+    "ronzen",
     instructions=(
         "You are the hands of a Ronzen mission. The council decides what "
         "to do; you do it. Loop: council_poll -> do the task -> council_report "
@@ -161,5 +161,5 @@ async def council_list_missions() -> str:
 
 if __name__ == "__main__":
     # Never print to stdout: it is the protocol channel
-    print(f"llm-council MCP server -> {BASE_URL}", file=sys.stderr)
+    print(f"ronzen MCP server -> {BASE_URL}", file=sys.stderr)
     server.run("stdio")

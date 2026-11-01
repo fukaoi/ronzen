@@ -101,8 +101,6 @@ export const en = {
   // missions
   'mission.finalGoal': 'Final goal',
   'mission.goalPlaceholder': 'What should be true when this is finished?',
-  'mission.criteria': 'Done criteria (optional)',
-  'mission.criteriaPlaceholder': 'How will we know? e.g. all tests pass',
   'mission.maxIterations': 'Max iterations',
   'mission.start': 'Start mission',
   'mission.none': 'No missions yet',
@@ -119,7 +117,7 @@ export const en = {
   'mission.retry': 'Retry step',
   'mission.stop': 'Stop',
   'mission.connectHint':
-    'Claude Connect copies the start prompt. Paste it into Claude Code or Claude Desktop (with the llm-council MCP server registered).',
+    'Claude Connect copies the start prompt. Paste it into Claude Code or Claude Desktop (with the ronzen MCP server registered).',
   'mission.blockedTitle': 'The council needs a decision from you',
   'mission.yourAnswer': 'Your answer',
   'mission.sendAnswer': 'Send answer',
@@ -251,8 +249,6 @@ export const ja = {
 
   'mission.finalGoal': '最終目標',
   'mission.goalPlaceholder': '完了したとき、何が達成されていますか？',
-  'mission.criteria': '完了条件（任意）',
-  'mission.criteriaPlaceholder': '何で判断しますか？ 例：すべてのテストが通る',
   'mission.maxIterations': '最大の反復回数',
   'mission.start': 'ミッションを開始',
   'mission.none': 'ミッションはまだありません',
@@ -269,7 +265,7 @@ export const ja = {
   'mission.retry': 'ステップを再試行',
   'mission.stop': '停止',
   'mission.connectHint':
-    'Claude Connect は、開始用のプロンプトをコピーします。llm-council の MCP サーバーを登録した Claude Code または Claude Desktop に貼り付けてください。',
+    'Claude Connect は、開始用のプロンプトをコピーします。ronzen の MCP サーバーを登録した Claude Code または Claude Desktop に貼り付けてください。',
   'mission.blockedTitle': '評議会が、あなたの判断を求めています',
   'mission.yourAnswer': 'あなたの回答',
   'mission.sendAnswer': '回答を送信',
@@ -394,8 +390,6 @@ export const zh = {
 
   'mission.finalGoal': '最终目标',
   'mission.goalPlaceholder': '完成时应该达到什么状态？',
-  'mission.criteria': '完成标准（可选）',
-  'mission.criteriaPlaceholder': '如何判断？例如：所有测试通过',
   'mission.maxIterations': '最大迭代次数',
   'mission.start': '开始任务',
   'mission.none': '还没有任务',
@@ -412,7 +406,7 @@ export const zh = {
   'mission.retry': '重试此步骤',
   'mission.stop': '停止',
   'mission.connectHint':
-    'Claude Connect 会复制启动提示词。请将它粘贴到已注册 llm-council MCP 服务器的 Claude Code 或 Claude Desktop 中。',
+    'Claude Connect 会复制启动提示词。请将它粘贴到已注册 ronzen MCP 服务器的 Claude Code 或 Claude Desktop 中。',
   'mission.blockedTitle': '评议会需要你做出决定',
   'mission.yourAnswer': '你的回答',
   'mission.sendAnswer': '发送回答',
@@ -543,8 +537,6 @@ export const es = {
 
   'mission.finalGoal': 'Objetivo final',
   'mission.goalPlaceholder': '¿Qué debe cumplirse cuando esto termine?',
-  'mission.criteria': 'Criterios de finalización (opcional)',
-  'mission.criteriaPlaceholder': '¿Cómo lo sabremos? p. ej., todas las pruebas pasan',
   'mission.maxIterations': 'Máximo de iteraciones',
   'mission.start': 'Iniciar misión',
   'mission.none': 'Aún no hay misiones',
@@ -561,7 +553,7 @@ export const es = {
   'mission.retry': 'Reintentar el paso',
   'mission.stop': 'Detener',
   'mission.connectHint':
-    'Claude Connect copia el prompt de inicio. Pégalo en Claude Code o Claude Desktop (con el servidor MCP llm-council registrado).',
+    'Claude Connect copia el prompt de inicio. Pégalo en Claude Code o Claude Desktop (con el servidor MCP ronzen registrado).',
   'mission.blockedTitle': 'El consejo necesita una decisión tuya',
   'mission.yourAnswer': 'Tu respuesta',
   'mission.sendAnswer': 'Enviar respuesta',
