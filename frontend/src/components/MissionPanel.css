@@ -537,3 +537,10 @@
     animation: none;
   }
 }
+
+.agent-note {
+  margin: -4px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}

@@ -63,6 +63,10 @@ function MissionIntro() {
 // silent while it works on a task, so a long quiet spell still counts as connected
 const AGENT_CONNECTED_WITHIN = 15 * 60;
 
+function isAgentConnected(seenAgo) {
+  return seenAgo != null && seenAgo <= AGENT_CONNECTED_WITHIN;
+}
+
 function formatAgo(seconds, locale) {
   const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
   if (seconds < 60) return rtf.format(-seconds, 'second');
@@ -72,16 +76,19 @@ function formatAgo(seconds, locale) {
 
 function AgentStatus({ seenAgo }) {
   const { t, lang } = useI18n();
-  const connected = seenAgo != null && seenAgo <= AGENT_CONNECTED_WITHIN;
+  const connected = isAgentConnected(seenAgo);
   const locale = LANGUAGES.find((l) => l.code === lang)?.htmlLang;
 
   return (
-    <div className={`agent-status ${connected ? 'connected' : ''}`}>
-      <span className="agent-dot" aria-hidden="true" />
-      {connected
-        ? `${t('mission.agent.connected')} · ${formatAgo(seenAgo, locale)}`
-        : t('mission.agent.notConnected')}
-    </div>
+    <>
+      <div className={`agent-status ${connected ? 'connected' : ''}`}>
+        <span className="agent-dot" aria-hidden="true" />
+        {connected
+          ? `${t('mission.agent.connected')} · ${formatAgo(seenAgo, locale)}`
+          : t('mission.agent.notConnected')}
+      </div>
+      {connected && <p className="agent-note">{t('mission.agent.recopyNote')}</p>}
+    </>
   );
 }
 
@@ -264,6 +271,7 @@ export default function MissionPanel() {
   };
 
   const open = detail && ['active', 'blocked'].includes(detail.status);
+  const agentConnected = open && isAgentConnected(detail.agent_seen_ago);
 
   return (
     <div className="mission-panel">
@@ -356,12 +364,18 @@ export default function MissionPanel() {
               </p>
 
               <div className="mission-actions">
+                {/* Once Claude is connected the prompt is only needed again if the
+                    connection was lost, so the button steps back from primary */}
                 <button
-                  className="mission-primary"
+                  className={agentConnected ? '' : 'mission-primary'}
                   disabled={!open}
                   onClick={connect}
                 >
-                  {copied ? t('common.copied') : t('mission.connect')}
+                  {copied
+                    ? t('common.copied')
+                    : agentConnected
+                      ? t('mission.agent.recopy')
+                      : t('mission.connect')}
                 </button>
                 {detail.step === 'error' && (
                   <button
