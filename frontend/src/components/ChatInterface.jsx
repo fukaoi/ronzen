@@ -12,6 +12,12 @@ import { api } from '../api';
 import { useI18n } from '../i18n/useI18n';
 import './ChatInterface.css';
 
+// Ctrl+Enter sends everywhere; on a Mac the same shortcut is Cmd+Enter
+const SEND_SHORTCUT =
+  typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
+    ? '⌘+Enter'
+    : 'Ctrl+Enter';
+
 const ASK_MODES = [
   {
     id: 'council',
@@ -544,9 +550,12 @@ export default function ChatInterface({
             disabled={isLoading || busyElsewhere}
             rows={3}
           />
-          <button type="submit" className="send-button" disabled={!canSend}>
-            {t('chat.send')}
-          </button>
+          <div className="send-group">
+            <button type="submit" className="send-button" disabled={!canSend}>
+              {t('chat.send')}
+            </button>
+            <span className="send-shortcut">({SEND_SHORTCUT})</span>
+          </div>
         </div>
       </form>
     </div>
