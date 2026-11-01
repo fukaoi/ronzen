@@ -950,10 +950,10 @@ async def recover_interrupted_missions():
             missions.save_mission(mission)
 
 
-# When each mission's coding agent was last heard from, by wall clock. Only the
-# MCP server marks its requests, so the page's own refreshes do not count. Kept
-# in memory: it matters only while an agent is running, and a restart simply
-# starts over.
+# When each mission's coding agent was last heard from, by wall clock. Polling
+# is told apart from the page's own refreshes by the MCP server's header, and
+# is kept in memory. A report is proof on its own (the page only ever sends
+# human answers), so it is also saved with the mission and survives a restart.
 AGENT_CLIENT_HEADER = "x-ronzen-client"
 _agent_last_seen: Dict[str, float] = {}
 
@@ -965,8 +965,11 @@ def note_agent_contact(http_request: Request, mission_id: str):
 
 def with_agent_status(view: Dict[str, Any], mission_id: str) -> Dict[str, Any]:
     """Add how long ago the agent last called, or None if it never has."""
-    seen = _agent_last_seen.get(mission_id)
-    ago = None if seen is None else max(0, int(time.time() - seen))
+    seen = max(
+        _agent_last_seen.get(mission_id, 0),
+        float(view.get("agent_seen_at") or 0),
+    )
+    ago = max(0, int(time.time() - seen)) if seen else None
     return {**view, "agent_seen_ago": ago}
 
 
@@ -1060,6 +1063,9 @@ async def report_mission(
         raise HTTPException(
             status_code=409, detail=f"The mission is {mission['status']}"
         )
+
+    if not request.from_human:
+        mission["agent_seen_at"] = time.time()
 
     prompt = missions.build_next_prompt(
         len(mission["iterations"]),
