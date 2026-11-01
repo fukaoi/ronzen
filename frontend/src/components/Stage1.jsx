@@ -4,10 +4,11 @@ import remarkGfm from 'remark-gfm';
 import ModelIcon from './ModelIcon';
 import StageBadge from './StageBadge';
 import { useI18n } from '../i18n/useI18n';
+import MessageTime from './MessageTime';
 import { shortName } from '../models';
 import './Stage1.css';
 
-export default function Stage1({ responses }) {
+export default function Stage1({ responses, time }) {
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState(0);
 
@@ -20,6 +21,7 @@ export default function Stage1({ responses }) {
       <h3 className="stage-title">
         <StageBadge stage={1} />
         {t('stage.1')}
+        <MessageTime value={time} />
       </h3>
 
       <div className="tabs">

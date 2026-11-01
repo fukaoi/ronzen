@@ -138,3 +138,13 @@
   line-height: 1.7;
   padding: 0;
 }
+
+/* The time a stage finished, beside its title */
+.stage-title .message-time {
+  margin-left: 4px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+}

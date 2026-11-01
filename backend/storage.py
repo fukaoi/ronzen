@@ -187,7 +187,8 @@ def add_assistant_message(
     stage1: List[Dict[str, Any]],
     stage2: List[Dict[str, Any]],
     stage3: Dict[str, Any],
-    mode: str = "council"
+    mode: str = "council",
+    stage_times: Optional[Dict[str, str]] = None
 ):
     """
     Add an assistant message with all 3 stages to a conversation.
@@ -198,6 +199,7 @@ def add_assistant_message(
         stage2: List of model rankings
         stage3: Final synthesized response
         mode: "chairman" when the chairman answered alone, with no stages 1 and 2
+        stage_times: When each stage finished, by stage name, as message_timestamp()
     """
     conversation = get_conversation(conversation_id)
     if conversation is None:
@@ -209,7 +211,8 @@ def add_assistant_message(
         "stage1": stage1,
         "stage2": stage2,
         "stage3": stage3,
-        "mode": mode
+        "mode": mode,
+        "stage_times": stage_times or {}
     })
 
     save_conversation(conversation)

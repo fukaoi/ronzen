@@ -4,10 +4,11 @@ import remarkGfm from 'remark-gfm';
 import ModelIcon from './ModelIcon';
 import StageBadge from './StageBadge';
 import { useI18n } from '../i18n/useI18n';
+import MessageTime from './MessageTime';
 import { shortName } from '../models';
 import './Stage3.css';
 
-export default function Stage3({ finalResponse, solo = false }) {
+export default function Stage3({ finalResponse, solo = false, time }) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
@@ -44,6 +45,7 @@ export default function Stage3({ finalResponse, solo = false }) {
       <h3 className="stage-title">
         <StageBadge stage={3} />
         {solo ? t('stage.chairmanDirect') : t('stage.3')}
+        <MessageTime value={time} />
       </h3>
       <div className="final-response">
         <div className="final-toolbar">

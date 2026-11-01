@@ -10,7 +10,7 @@ import Logo from './Logo';
 import StageLoader from './StageLoader';
 import { api } from '../api';
 import { useI18n } from '../i18n/useI18n';
-import { LANGUAGES } from '../i18n/context';
+import MessageTime from './MessageTime';
 import './ChatInterface.css';
 
 // Ctrl+Enter sends everywhere; on a Mac the same shortcut is Cmd+Enter
@@ -23,28 +23,6 @@ const SEND_SHORTCUT =
 // shows "top", down shows "bottom"); within SCROLL_END_PX of an end it goes away
 const SCROLL_DIRECTION_PX = 120;
 const SCROLL_END_PX = 100;
-
-/** When a message was sent or answered, in the viewer's own time zone. */
-function MessageTime({ value }) {
-  const { lang } = useI18n();
-  const date = value ? new Date(value) : null;
-  if (!date || Number.isNaN(date.getTime())) return null;
-
-  const locale = LANGUAGES.find((l) => l.code === lang)?.htmlLang;
-  const text = new Intl.DateTimeFormat(locale, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
-
-  return (
-    <time className="message-time" dateTime={value}>
-      {text}
-    </time>
-  );
-}
 
 const ASK_MODES = [
   {
@@ -422,7 +400,6 @@ export default function ChatInterface({
                 <div className="assistant-message">
                   <div className="message-head">
                     <div className="message-label">Ronzen</div>
-                    <MessageTime value={msg.created_at} />
                   </div>
 
                   <CouncilRoster
@@ -434,7 +411,9 @@ export default function ChatInterface({
                   {msg.loading?.stage1 && (
                     <StageLoader stage={1}>{t('chat.stage1Running')}</StageLoader>
                   )}
-                  {msg.stage1 && <Stage1 responses={msg.stage1} />}
+                  {msg.stage1 && (
+                    <Stage1 responses={msg.stage1} time={msg.stage_times?.stage1} />
+                  )}
 
                   {/* Stage 2 */}
                   {msg.loading?.stage2 && (
@@ -442,6 +421,7 @@ export default function ChatInterface({
                   )}
                   {msg.stage2 && (
                     <Stage2
+                      time={msg.stage_times?.stage2}
                       rankings={msg.stage2}
                       labelToModel={msg.metadata?.label_to_model}
                       aggregateRankings={msg.metadata?.aggregate_rankings}
@@ -459,6 +439,7 @@ export default function ChatInterface({
                   {msg.stage3 && (
                     <Stage3
                       finalResponse={msg.stage3}
+                      time={msg.stage_times?.stage3 || msg.created_at}
                       solo={msg.mode === 'chairman'}
                     />
                   )}

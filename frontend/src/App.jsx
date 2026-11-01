@@ -298,6 +298,7 @@ function App() {
       case 'stage1_complete':
         patchLastMessage(conversationId, (msg) => ({
           stage1: event.data,
+          stage_times: { ...msg.stage_times, stage1: event.at },
           loading: { ...msg.loading, stage1: false },
         }));
         break;
@@ -309,6 +310,7 @@ function App() {
       case 'stage2_complete':
         patchLastMessage(conversationId, (msg) => ({
           stage2: event.data,
+          stage_times: { ...msg.stage_times, stage2: event.at },
           metadata: event.metadata,
           loading: { ...msg.loading, stage2: false },
         }));
@@ -325,7 +327,8 @@ function App() {
       case 'stage3_complete':
         patchLastMessage(conversationId, (msg) => ({
           stage3: event.data,
-          created_at: new Date().toISOString(),
+          stage_times: { ...msg.stage_times, stage3: event.at },
+          created_at: event.at,
           loading: { ...msg.loading, stage3: false },
         }));
         break;

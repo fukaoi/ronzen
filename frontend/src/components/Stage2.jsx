@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import ModelIcon from './ModelIcon';
 import StageBadge from './StageBadge';
 import { useI18n } from '../i18n/useI18n';
+import MessageTime from './MessageTime';
 import { shortName } from '../models';
 import './Stage2.css';
 
@@ -29,7 +30,7 @@ function rankStrength(averageRank, modelCount) {
   return Math.max(0.06, Math.min(1, strength));
 }
 
-export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
+export default function Stage2({ rankings, labelToModel, aggregateRankings, time }) {
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState(0);
 
@@ -42,6 +43,7 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
       <h3 className="stage-title">
         <StageBadge stage={2} />
         {t('stage.2')}
+        <MessageTime value={time} />
       </h3>
 
       <h4>{t('stage.rawEvaluations')}</h4>

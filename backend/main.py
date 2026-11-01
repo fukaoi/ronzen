@@ -700,6 +700,7 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
                     run.emit({'type': 'title_complete', 'data': {'title': title}})
                 title_saver = asyncio.create_task(save_title())
 
+            stage_times: Dict[str, str] = {}
             solo = request.mode == "chairman"
             if solo:
                 # A quick follow-up: only the chairman answers
@@ -708,14 +709,17 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
                 # Stage 1: Collect responses
                 run.emit({'type': 'stage1_start'})
                 stage1_results = await stage1_collect_responses(request.content, images, history, files)
-                run.emit({'type': 'stage1_complete', 'data': stage1_results})
+                stage_times['stage1'] = storage.message_timestamp()
+                run.emit({'type': 'stage1_complete', 'data': stage1_results, 'at': stage_times['stage1']})
 
                 # Stage 2: Collect rankings
                 run.emit({'type': 'stage2_start'})
                 stage2_results, label_to_model = await stage2_collect_rankings(request.content, stage1_results, images, history, files)
                 aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
+                stage_times['stage2'] = storage.message_timestamp()
                 run.emit({
                     'type': 'stage2_complete',
+                    'at': stage_times['stage2'],
                     'data': stage2_results,
                     'metadata': {
                         'label_to_model': label_to_model,
@@ -729,7 +733,8 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
                 stage3_result = await ask_chairman_directly(request.content, images, history, files)
             else:
                 stage3_result = await stage3_synthesize_final(request.content, stage1_results, stage2_results, images, history, files)
-            run.emit({'type': 'stage3_complete', 'data': stage3_result})
+            stage_times['stage3'] = storage.message_timestamp()
+            run.emit({'type': 'stage3_complete', 'data': stage3_result, 'at': stage_times['stage3']})
 
             if title_saver:
                 await title_saver
@@ -740,7 +745,8 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
                 stage1_results,
                 stage2_results,
                 stage3_result,
-                request.mode
+                request.mode,
+                stage_times
             )
 
             # Released before the client is told, so that the conversation
@@ -863,19 +869,23 @@ async def run_mission_step(mission_id: str, prompt: str):
         history = build_history_messages(conversation)
         storage.add_user_message(conversation_id, prompt)
 
+        stage_times: Dict[str, str] = {}
         run.emit({'type': 'stage1_start'})
         stage1_results = await stage1_collect_responses(prompt, [], history, [])
         if not stage1_results:
             raise ValueError("All council models failed to respond")
-        run.emit({'type': 'stage1_complete', 'data': stage1_results})
+        stage_times['stage1'] = storage.message_timestamp()
+        run.emit({'type': 'stage1_complete', 'data': stage1_results, 'at': stage_times['stage1']})
 
         run.emit({'type': 'stage2_start'})
         stage2_results, label_to_model = await stage2_collect_rankings(
             prompt, stage1_results, [], history, []
         )
         aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
+        stage_times['stage2'] = storage.message_timestamp()
         run.emit({
             'type': 'stage2_complete',
+            'at': stage_times['stage2'],
             'data': stage2_results,
             'metadata': {
                 'label_to_model': label_to_model,
@@ -887,10 +897,12 @@ async def run_mission_step(mission_id: str, prompt: str):
         stage3_result = await stage3_synthesize_final(
             prompt, stage1_results, stage2_results, [], history, []
         )
-        run.emit({'type': 'stage3_complete', 'data': stage3_result})
+        stage_times['stage3'] = storage.message_timestamp()
+        run.emit({'type': 'stage3_complete', 'data': stage3_result, 'at': stage_times['stage3']})
 
         storage.add_assistant_message(
-            conversation_id, stage1_results, stage2_results, stage3_result
+            conversation_id, stage1_results, stage2_results, stage3_result,
+            stage_times=stage_times
         )
 
         verdict, body = missions.parse_verdict(stage3_result.get("response", ""))
