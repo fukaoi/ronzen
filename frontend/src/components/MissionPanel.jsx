@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { Target, Users, Terminal, Flag } from 'lucide-react';
 import ToriiIcon from './ToriiIcon';
 import { useI18n } from '../i18n/useI18n';
+import { LANGUAGES } from '../i18n/context';
 import { api } from '../api';
 import './MissionPanel.css';
 
@@ -54,6 +55,32 @@ function MissionIntro() {
           </li>
         ))}
       </ol>
+    </div>
+  );
+}
+
+// The agent calls every couple of seconds while the council deliberates, but is
+// silent while it works on a task, so a long quiet spell still counts as connected
+const AGENT_CONNECTED_WITHIN = 15 * 60;
+
+function formatAgo(seconds, locale) {
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  if (seconds < 60) return rtf.format(-seconds, 'second');
+  if (seconds < 3600) return rtf.format(-Math.floor(seconds / 60), 'minute');
+  return rtf.format(-Math.floor(seconds / 3600), 'hour');
+}
+
+function AgentStatus({ seenAgo }) {
+  const { t, lang } = useI18n();
+  const connected = seenAgo != null && seenAgo <= AGENT_CONNECTED_WITHIN;
+  const locale = LANGUAGES.find((l) => l.code === lang)?.htmlLang;
+
+  return (
+    <div className={`agent-status ${connected ? 'connected' : ''}`}>
+      <span className="agent-dot" aria-hidden="true" />
+      {connected
+        ? `${t('mission.agent.connected')} · ${formatAgo(seenAgo, locale)}`
+        : t('mission.agent.notConnected')}
     </div>
   );
 }
@@ -353,6 +380,7 @@ export default function MissionPanel() {
                   </button>
                 )}
               </div>
+              {open && <AgentStatus seenAgo={detail.agent_seen_ago} />}
               {open && (
                 <p className="mission-hint">
                   {t('mission.connectHint')}

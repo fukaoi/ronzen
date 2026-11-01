@@ -41,7 +41,10 @@ class CouncilError(Exception):
 
 async def call(method: str, path: str, **kwargs) -> Dict[str, Any]:
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        # The header tells the app this is the agent, not the web page
+        async with httpx.AsyncClient(
+            timeout=30.0, headers={"X-Ronzen-Client": "mcp"}
+        ) as client:
             response = await client.request(method, f"{BASE_URL}{path}", **kwargs)
     except httpx.TransportError:
         raise CouncilError(

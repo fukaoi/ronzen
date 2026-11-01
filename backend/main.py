@@ -950,6 +950,26 @@ async def recover_interrupted_missions():
             missions.save_mission(mission)
 
 
+# When each mission's coding agent was last heard from, by wall clock. Only the
+# MCP server marks its requests, so the page's own refreshes do not count. Kept
+# in memory: it matters only while an agent is running, and a restart simply
+# starts over.
+AGENT_CLIENT_HEADER = "x-ronzen-client"
+_agent_last_seen: Dict[str, float] = {}
+
+
+def note_agent_contact(http_request: Request, mission_id: str):
+    if http_request.headers.get(AGENT_CLIENT_HEADER) == "mcp":
+        _agent_last_seen[mission_id] = time.time()
+
+
+def with_agent_status(view: Dict[str, Any], mission_id: str) -> Dict[str, Any]:
+    """Add how long ago the agent last called, or None if it never has."""
+    seen = _agent_last_seen.get(mission_id)
+    ago = None if seen is None else max(0, int(time.time() - seen))
+    return {**view, "agent_seen_ago": ago}
+
+
 @app.get("/api/missions")
 async def list_missions():
     """All missions, newest first, without their full iteration history."""
@@ -998,18 +1018,23 @@ async def create_mission(request: CreateMissionRequest):
 
 
 @app.get("/api/missions/{mission_id}")
-async def get_mission(mission_id: str):
+async def get_mission(mission_id: str, http_request: Request):
     """A mission with the task currently waiting for the agent, if any."""
-    return missions.public_view(get_mission_or_404(mission_id))
+    mission = get_mission_or_404(mission_id)
+    note_agent_contact(http_request, mission_id)
+    return with_agent_status(missions.public_view(mission), mission_id)
 
 
 @app.post(
     "/api/missions/{mission_id}/report",
     dependencies=[Depends(enforce_rate_limit)],
 )
-async def report_mission(mission_id: str, request: MissionReportRequest):
+async def report_mission(
+    mission_id: str, request: MissionReportRequest, http_request: Request
+):
     """Hand the council a report; it judges it and defines what comes next."""
     mission = get_mission_or_404(mission_id)
+    note_agent_contact(http_request, mission_id)
     report = request.report.strip()
     if not report:
         raise HTTPException(status_code=400, detail="The report must not be empty")

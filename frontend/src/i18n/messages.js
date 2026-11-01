@@ -114,6 +114,8 @@ export const en = {
   'mission.doneWhen': 'Done when: {text}',
   'mission.progress': '{state} · iteration {n}/{max}',
   'mission.connect': 'Claude Connect',
+  'mission.agent.connected': 'Claude connected',
+  'mission.agent.notConnected': 'Claude not connected',
   'mission.retry': 'Retry step',
   'mission.stop': 'Stop',
   'mission.connectHint':
@@ -262,6 +264,8 @@ export const ja = {
   'mission.doneWhen': '完了の条件：{text}',
   'mission.progress': '{state} · 反復 {n}/{max}',
   'mission.connect': 'Claude Connect',
+  'mission.agent.connected': 'Claude 接続中',
+  'mission.agent.notConnected': 'Claude 未接続',
   'mission.retry': 'ステップを再試行',
   'mission.stop': '停止',
   'mission.connectHint':
@@ -403,6 +407,8 @@ export const zh = {
   'mission.doneWhen': '完成条件：{text}',
   'mission.progress': '{state} · 迭代 {n}/{max}',
   'mission.connect': 'Claude Connect',
+  'mission.agent.connected': 'Claude 已连接',
+  'mission.agent.notConnected': 'Claude 未连接',
   'mission.retry': '重试此步骤',
   'mission.stop': '停止',
   'mission.connectHint':
@@ -550,6 +556,8 @@ export const es = {
   'mission.doneWhen': 'Se termina cuando: {text}',
   'mission.progress': '{state} · iteración {n}/{max}',
   'mission.connect': 'Claude Connect',
+  'mission.agent.connected': 'Claude conectado',
+  'mission.agent.notConnected': 'Claude no conectado',
   'mission.retry': 'Reintentar el paso',
   'mission.stop': 'Detener',
   'mission.connectHint':
