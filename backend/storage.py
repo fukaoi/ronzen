@@ -5,7 +5,7 @@ import json
 import os
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 from .config import (
@@ -141,6 +141,11 @@ def list_conversations() -> List[Dict[str, Any]]:
     return conversations
 
 
+def message_timestamp() -> str:
+    """When a message was saved, in UTC with its offset, so any client can show local time."""
+    return datetime.now(timezone.utc).isoformat()
+
+
 def add_user_message(
     conversation_id: str,
     content: str,
@@ -165,6 +170,7 @@ def add_user_message(
 
     conversation["messages"].append({
         "role": "user",
+        "created_at": message_timestamp(),
         "content": content,
         "images": images or [],
         "files": [
@@ -199,6 +205,7 @@ def add_assistant_message(
 
     conversation["messages"].append({
         "role": "assistant",
+        "created_at": message_timestamp(),
         "stage1": stage1,
         "stage2": stage2,
         "stage3": stage3,

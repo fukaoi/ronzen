@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { Users, Stamp } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Users, Stamp, ArrowUp, ArrowDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Stage1 from './Stage1';
@@ -10,6 +10,7 @@ import Logo from './Logo';
 import StageLoader from './StageLoader';
 import { api } from '../api';
 import { useI18n } from '../i18n/useI18n';
+import { LANGUAGES } from '../i18n/context';
 import './ChatInterface.css';
 
 // Ctrl+Enter sends everywhere; on a Mac the same shortcut is Cmd+Enter
@@ -17,6 +18,33 @@ const SEND_SHORTCUT =
   typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
     ? '⌘+Enter'
     : 'Ctrl+Enter';
+
+// Scrolling this far in one direction brings out the matching jump button (up
+// shows "top", down shows "bottom"); within SCROLL_END_PX of an end it goes away
+const SCROLL_DIRECTION_PX = 120;
+const SCROLL_END_PX = 100;
+
+/** When a message was sent or answered, in the viewer's own time zone. */
+function MessageTime({ value }) {
+  const { lang } = useI18n();
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return null;
+
+  const locale = LANGUAGES.find((l) => l.code === lang)?.htmlLang;
+  const text = new Intl.DateTimeFormat(locale, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+
+  return (
+    <time className="message-time" dateTime={value}>
+      {text}
+    </time>
+  );
+}
 
 const ASK_MODES = [
   {
@@ -90,15 +118,67 @@ export default function ChatInterface({
   const [uploadError, setUploadError] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const messagesEndRef = useRef(null);
+  const messagesRef = useRef(null);
   const fileInputRef = useRef(null);
+  const [scrollButtons, setScrollButtons] = useState({ top: false, bottom: false });
+  const lastScrollTop = useRef(0);
+  const scrollRun = useRef(0);
+  const ignoreScrollUntil = useRef(0);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const scrollToTop = () => {
+    messagesRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // The direction the reader is scrolling decides which button shows. Moves
+  // made by the page itself (following a new answer) are not the reader's.
+  const updateScrollButtons = useCallback(() => {
+    const el = messagesRef.current;
+    if (!el) return;
+
+    const top = el.scrollTop;
+    const fromBottom = el.scrollHeight - top - el.clientHeight;
+    const delta = top - lastScrollTop.current;
+    lastScrollTop.current = top;
+
+    if (delta !== 0 && Date.now() >= ignoreScrollUntil.current) {
+      scrollRun.current =
+        Math.sign(delta) === Math.sign(scrollRun.current) ? scrollRun.current + delta : delta;
+    }
+
+    setScrollButtons((prev) => {
+      let showTop = prev.top;
+      let showBottom = prev.bottom;
+      if (scrollRun.current <= -SCROLL_DIRECTION_PX) {
+        showTop = true;
+        showBottom = false;
+      } else if (scrollRun.current >= SCROLL_DIRECTION_PX) {
+        showTop = false;
+        showBottom = true;
+      }
+      if (top <= SCROLL_END_PX) showTop = false;
+      if (fromBottom <= SCROLL_END_PX) showBottom = false;
+      return prev.top === showTop && prev.bottom === showBottom
+        ? prev
+        : { top: showTop, bottom: showBottom };
+    });
+  }, []);
+
   useEffect(() => {
+    // Following the conversation down is not the reader scrolling
+    ignoreScrollUntil.current = Date.now() + 1500;
+    scrollRun.current = 0;
     scrollToBottom();
   }, [conversation]);
+
+  useEffect(() => {
+    updateScrollButtons();
+    window.addEventListener('resize', updateScrollButtons);
+    return () => window.removeEventListener('resize', updateScrollButtons);
+  }, [conversation, updateScrollButtons]);
 
   // Clear the composer when switching conversations. A conversation just
   // created by a hand-off arrives with its carried-over summary ready to send.
@@ -261,7 +341,8 @@ export default function ChatInterface({
 
   return (
     <div className="chat-interface">
-      <div className="messages-container">
+      <div className="messages-wrap">
+      <div className="messages-container" ref={messagesRef} onScroll={updateScrollButtons}>
         {conversation.messages.length === 0 ? (
           <div className="empty-state">
             <h2>{t('chat.startTitle')}</h2>
@@ -272,7 +353,10 @@ export default function ChatInterface({
             <div key={index} className="message-group">
               {msg.role === 'user' ? (
                 <div className="user-message">
-                  <div className="message-label">{t('chat.you')}</div>
+                  <div className="message-head">
+                    <div className="message-label">{t('chat.you')}</div>
+                    <MessageTime value={msg.created_at} />
+                  </div>
                   <div className="message-content">
                     {msg.images?.length > 0 && (
                       <div className="message-images">
@@ -336,7 +420,10 @@ export default function ChatInterface({
                 </div>
               ) : (
                 <div className="assistant-message">
-                  <div className="message-label">Ronzen</div>
+                  <div className="message-head">
+                    <div className="message-label">Ronzen</div>
+                    <MessageTime value={msg.created_at} />
+                  </div>
 
                   <CouncilRoster
                     members={msg.stage1?.map((resp) => resp.model)}
@@ -389,6 +476,28 @@ export default function ChatInterface({
         )}
 
         <div ref={messagesEndRef} />
+      </div>
+
+      <button
+        type="button"
+        className={`scroll-fab scroll-fab-top ${scrollButtons.top ? '' : 'hide'}`}
+        onClick={scrollToTop}
+        aria-label={t('chat.scrollTop')}
+        title={t('chat.scrollTop')}
+        tabIndex={scrollButtons.top ? 0 : -1}
+      >
+        <ArrowUp size={18} strokeWidth={2.2} />
+      </button>
+      <button
+        type="button"
+        className={`scroll-fab scroll-fab-bottom ${scrollButtons.bottom ? '' : 'hide'}`}
+        onClick={scrollToBottom}
+        aria-label={t('chat.scrollBottom')}
+        title={t('chat.scrollBottom')}
+        tabIndex={scrollButtons.bottom ? 0 : -1}
+      >
+        <ArrowDown size={18} strokeWidth={2.2} />
+      </button>
       </div>
 
       <form

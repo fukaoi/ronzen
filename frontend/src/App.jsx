@@ -325,6 +325,7 @@ function App() {
       case 'stage3_complete':
         patchLastMessage(conversationId, (msg) => ({
           stage3: event.data,
+          created_at: new Date().toISOString(),
           loading: { ...msg.loading, stage3: false },
         }));
         break;
@@ -424,7 +425,7 @@ function App() {
       // that the stages fill in as they arrive
       appendMessages(
         conversationId,
-        { role: 'user', content, images, files },
+        { role: 'user', content, images, files, created_at: new Date().toISOString() },
         pendingAssistantMessage()
       );
 

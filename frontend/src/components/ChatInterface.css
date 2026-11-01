@@ -9,8 +9,59 @@
   gap: 20px;
 }
 
+.messages-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Round buttons that jump to either end of a long conversation; each appears
+   only while that end is out of reach */
+.scroll-fab {
+  position: absolute;
+  left: 50%;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--accent);
+  box-shadow: var(--nm-raised);
+  cursor: pointer;
+  transform: translateX(-50%);
+  transition: opacity var(--ease), transform var(--ease), background var(--ease),
+    color var(--ease);
+}
+
+.scroll-fab-top { top: 6px; }
+.scroll-fab-bottom { bottom: 6px; }
+
+.scroll-fab:hover {
+  background: var(--accent-gradient);
+  color: #fff;
+}
+
+.scroll-fab.hide {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-fab {
+    transition: none;
+  }
+}
+
 .messages-container {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 10px 14px;
   margin: -10px -4px;
@@ -60,7 +111,7 @@
   margin-bottom: 28px;
 }
 
-.assistant-message > .message-label {
+.assistant-message .message-label {
   background: var(--accent-gradient);
   -webkit-background-clip: text;
   background-clip: text;
@@ -72,11 +123,24 @@
   margin-bottom: 16px;
 }
 
+.message-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.message-time {
+  color: var(--text-faint);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
 .message-label {
   font-size: 11px;
   font-weight: 700;
   color: var(--text-muted);
-  margin-bottom: 10px;
   text-transform: uppercase;
   letter-spacing: 2px;
 }
