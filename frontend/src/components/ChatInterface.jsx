@@ -464,7 +464,7 @@ export default function ChatInterface({
 
         {isLoading && (
           <div className="loading-indicator">
-            <Logo size={34} typing />
+            <Logo size={44} typing />
             <span>{t('chat.consulting')}</span>
           </div>
         )}

@@ -211,6 +211,13 @@
   font-size: 13px;
 }
 
+/* The mark's paper roundel is pale, so what shows is the ring inside it: draw it
+   larger, and pull the margins in so the row stays as tall as a stage's row and
+   the text lines up with it */
+.loading-indicator .logo {
+  margin: -5px;
+}
+
 .spinner {
   width: 18px;
   height: 18px;
