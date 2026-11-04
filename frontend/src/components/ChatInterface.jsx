@@ -324,7 +324,7 @@ export default function ChatInterface({
       <div className="chat-interface">
         <div className="empty-state">
           <h2>{t('chat.welcomeTitle')}</h2>
-          <p>{t('chat.welcomeText')}</p>
+          <p>{t('chat.startText')}</p>
         </div>
       </div>
     );
@@ -336,7 +336,7 @@ export default function ChatInterface({
       <div className="messages-container" ref={messagesRef} onScroll={updateScrollButtons}>
         {conversation.messages.length === 0 ? (
           <div className="empty-state">
-            <h2>{t('chat.startTitle')}</h2>
+            <h2>{conversation.id ? t('chat.startTitle') : t('chat.welcomeTitle')}</h2>
             <p>{t('chat.startText')}</p>
           </div>
         ) : (

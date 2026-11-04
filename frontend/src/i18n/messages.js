@@ -55,7 +55,6 @@ export const en = {
 
   // chat
   'chat.welcomeTitle': 'Multiple Minds. Deeper Thinking.',
-  'chat.welcomeText': 'Create a new conversation to get started',
   'chat.startTitle': 'Start a conversation',
   'chat.startText': 'Ask a question to consult the council',
   'chat.you': 'You',
@@ -228,7 +227,6 @@ export const ja = {
   'rules.example2': 'ルールを厳しくしすぎない',
 
   'chat.welcomeTitle': '多くの知恵で、深く考える。',
-  'chat.welcomeText': '新しい会話を作って始めましょう',
   'chat.startTitle': '会話を始める',
   'chat.startText': '質問して、評議会に相談しましょう',
   'chat.you': 'あなた',
@@ -394,7 +392,6 @@ export const zh = {
   'rules.example2': '不要把规则定得太严格',
 
   'chat.welcomeTitle': '集众人之智，深入思考。',
-  'chat.welcomeText': '新建一个对话即可开始',
   'chat.startTitle': '开始对话',
   'chat.startText': '提出问题，向评议会请教',
   'chat.you': '你',
@@ -556,7 +553,6 @@ export const es = {
   'rules.example2': 'No seas demasiado estricto con las reglas',
 
   'chat.welcomeTitle': 'Muchas mentes. Pensamiento más profundo.',
-  'chat.welcomeText': 'Crea una conversación nueva para empezar',
   'chat.startTitle': 'Empieza una conversación',
   'chat.startText': 'Haz una pregunta para consultar al consejo',
   'chat.you': 'Tú',

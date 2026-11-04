@@ -7,6 +7,17 @@ import SidebarToggle from './components/SidebarToggle';
 import { api } from './api';
 import './App.css';
 
+// What the chat shows before there is a conversation: an empty one with the
+// input form ready. The real conversation is created by the first question, so
+// opening the app leaves nothing behind.
+const DRAFT_CONVERSATION = {
+  id: null,
+  title: '',
+  messages: [],
+  context_chars: 0,
+  context_heavy: false,
+};
+
 const SIDEBAR_KEY = 'ronzen.sidebar';
 
 function readSidebarOpen() {
@@ -431,13 +442,42 @@ function App() {
     files = [],
     mode = 'council'
   ) => {
-    if (!currentConversationId || streamingIdRef.current) return;
+    if (streamingIdRef.current) return;
 
     // Pin the run to this conversation: every update below targets this id,
     // so looking at another conversation meanwhile changes nothing there.
-    const conversationId = currentConversationId;
-    streamingIdRef.current = conversationId;
-    setStreamingId(conversationId);
+    let conversationId = currentConversationId;
+
+    if (!conversationId) {
+      // First question of a fresh start: the conversation is created now
+      let created;
+      try {
+        created = await api.createConversation();
+      } catch (error) {
+        console.error('Failed to create conversation:', error);
+        return;
+      }
+      conversationId = created.id;
+      // Claimed before it is selected, so loading it does not replace what is
+      // about to be shown
+      streamingIdRef.current = conversationId;
+      setStreamingId(conversationId);
+      setConversations((prev) => [
+        {
+          id: created.id,
+          created_at: created.created_at,
+          title: created.title,
+          message_count: 0,
+        },
+        ...prev,
+      ]);
+      setConversationsById((prev) => ({ ...prev, [created.id]: created }));
+      setCurrentConversationId(created.id);
+      setView('chat');
+    } else {
+      streamingIdRef.current = conversationId;
+      setStreamingId(conversationId);
+    }
 
     setPendingAttachments((prev) => {
       if (!(conversationId in prev)) return prev;
@@ -513,7 +553,7 @@ function App() {
         <MissionPanel />
       ) : (
       <ChatInterface
-        conversation={currentConversation}
+        conversation={currentConversationId ? currentConversation : DRAFT_CONVERSATION}
         onSendMessage={handleSendMessage}
         isLoading={streamingId !== null && streamingId === currentConversationId}
         busyElsewhere={streamingId !== null && streamingId !== currentConversationId}
