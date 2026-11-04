@@ -106,24 +106,11 @@ function App() {
     }
   };
 
-  const handleNewConversation = async () => {
-    try {
-      const newConv = await api.createConversation();
-      setConversations([
-        {
-          id: newConv.id,
-          created_at: newConv.created_at,
-          title: newConv.title,
-          message_count: 0,
-        },
-        ...conversations,
-      ]);
-      setConversationsById((prev) => ({ ...prev, [newConv.id]: newConv }));
-      setCurrentConversationId(newConv.id);
-      setView('chat');
-    } catch (error) {
-      console.error('Failed to create conversation:', error);
-    }
+  // A new conversation is the empty start screen; it is only created, and only
+  // appears in the list, once its first question is sent
+  const handleNewConversation = () => {
+    setCurrentConversationId(null);
+    setView('chat');
   };
 
   const handleDeleteConversation = async (id) => {
