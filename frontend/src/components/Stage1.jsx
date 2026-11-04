@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import Markdown from './Markdown';
 import ModelIcon from './ModelIcon';
 import StageBadge from './StageBadge';
 import { useI18n } from '../i18n/useI18n';
@@ -43,7 +42,7 @@ export default function Stage1({ responses, time }) {
           {responses[activeTab].model}
         </div>
         <div className="response-text markdown-content">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{responses[activeTab].response}</ReactMarkdown>
+          <Markdown>{responses[activeTab].response}</Markdown>
         </div>
       </div>
     </div>

@@ -148,3 +148,79 @@
   letter-spacing: 0.02em;
   color: var(--text-faint);
 }
+
+/* --- Diagrams drawn from Mermaid --- */
+
+.mermaid-block {
+  margin: 0 0 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  box-shadow: var(--nm-inset);
+  overflow: hidden;
+}
+
+.mermaid-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px 0 14px;
+}
+
+.mermaid-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--bg);
+  box-shadow: var(--nm-inset-sm);
+}
+
+.mermaid-switch button,
+.mermaid-copy {
+  padding: 3px 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--ease), color var(--ease);
+}
+
+.mermaid-switch button:hover,
+.mermaid-copy:hover {
+  color: var(--accent);
+}
+
+.mermaid-switch button.active {
+  background: var(--accent-gradient);
+  color: #fff;
+}
+
+.mermaid-svg {
+  display: flex;
+  justify-content: center;
+  padding: 12px 14px 16px;
+  overflow-x: auto;
+}
+
+.mermaid-svg svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-content .mermaid-source {
+  margin: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.mermaid-note {
+  margin: 0;
+  padding: 0 14px 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}

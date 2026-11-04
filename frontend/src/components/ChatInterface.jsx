@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Users, Stamp, ArrowUp, ArrowDown, Square } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import Markdown from './Markdown';
 import Stage1 from './Stage1';
 import Stage2 from './Stage2';
 import Stage3 from './Stage3';
@@ -407,7 +406,7 @@ export default function ChatInterface({
                     )}
                     {msg.content && (
                       <div className="markdown-content">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                        <Markdown>{msg.content}</Markdown>
                       </div>
                     )}
                   </div>

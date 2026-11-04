@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import Markdown from './Markdown';
 import { Target, Users, Terminal, Flag } from 'lucide-react';
 import ToriiIcon from './ToriiIcon';
 import { useI18n } from '../i18n/useI18n';
@@ -95,7 +94,7 @@ function AgentStatus({ seenAgo }) {
 function MissionText({ children }) {
   return (
     <div className="mission-text mission-markdown markdown-content">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{children}</ReactMarkdown>
+      <Markdown>{children}</Markdown>
     </div>
   );
 }
