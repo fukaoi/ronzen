@@ -579,12 +579,8 @@ async def rename_conversation(conversation_id: str, request: RenameConversationR
     return {"id": conversation_id, "title": title[:100]}
 
 
-@app.delete("/api/conversations/{conversation_id}")
-async def delete_conversation(conversation_id: str):
-    """Delete a conversation for good, with its uploads."""
-    ensure_not_running(conversation_id)
-
-    # A mission that is still going writes its deliberations here
+def ensure_not_in_active_mission(conversation_id: str):
+    """A mission that is still going writes its deliberations into its conversation."""
     if any(
         mission["conversation_id"] == conversation_id and mission["status"] == "active"
         for mission in missions.list_missions()
@@ -593,6 +589,48 @@ async def delete_conversation(conversation_id: str):
             status_code=409,
             detail="A mission that is still active uses this conversation. Stop the mission first.",
         )
+
+
+@app.post("/api/conversations/{conversation_id}/stop")
+async def stop_conversation_run(conversation_id: str):
+    """
+    Stop the run in progress, before it costs more.
+
+    Cancelling the task closes the connections to the models, so no further
+    answers are waited for. The question was saved when the run began, and the
+    run never finished, so it is taken back out: the page puts it back in the
+    input box, as when a question is edited. Its uploads stay. A conversation
+    left with nothing in it is deleted.
+    """
+    run = _active_runs.get(conversation_id)
+    if run is None or run.task is None:
+        raise HTTPException(status_code=409, detail="Nothing is running in this conversation")
+    ensure_not_in_active_mission(conversation_id)
+
+    run.task.cancel()
+    await asyncio.wait({run.task}, timeout=10)
+
+    removed = None
+    conversation = storage.get_conversation(conversation_id)
+    # Only a question that never got its answer: an earlier turn stays untouched
+    if conversation and conversation["messages"] and conversation["messages"][-1]["role"] == "user":
+        removed = storage.remove_last_turn(conversation_id, keep_attachments=True)
+
+    # If that was the only question, the conversation never really began: it goes
+    # too, rather than staying in the list empty and titled after a question that
+    # was taken back
+    emptied = removed is not None and not storage.get_conversation(conversation_id)["messages"]
+    if emptied:
+        storage.delete_conversation(conversation_id)
+    return {"stopped": True, "removed": removed, "conversation_deleted": emptied}
+
+
+@app.delete("/api/conversations/{conversation_id}")
+async def delete_conversation(conversation_id: str):
+    """Delete a conversation for good, with its uploads."""
+    ensure_not_running(conversation_id)
+
+    ensure_not_in_active_mission(conversation_id)
 
     if not storage.delete_conversation(conversation_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -676,14 +714,14 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
         so a reload, a dropped mobile connection or a closed tab cannot take
         the answer down with it.
         """
+        title_task = None
+        title_saver = None
         try:
             storage.add_user_message(
                 conversation_id, request.content, request.images, request.files
             )
 
             # Start title generation in parallel (don't await yet)
-            title_task = None
-            title_saver = None
             if is_first_message:
                 title_task = asyncio.create_task(
                     generate_conversation_title(
@@ -753,6 +791,15 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
             # list it reloads on 'complete' no longer reports this as running
             _active_runs.pop(conversation_id, None)
             run.emit({'type': 'complete'})
+
+        except asyncio.CancelledError:
+            # Stopped by the user: the title would describe a question that is
+            # being taken back
+            for task in (title_task, title_saver):
+                if task:
+                    task.cancel()
+            run.emit({'type': 'stopped'})
+            raise
 
         except Exception as e:
             run.emit({'type': 'error', 'message': str(e)})

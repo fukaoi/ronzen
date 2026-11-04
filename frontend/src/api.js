@@ -221,6 +221,23 @@ export const api = {
   },
 
   /**
+   * Stop the run in progress in a conversation. The unanswered question is
+   * taken back out and returned, so it can be put back in the input box.
+   * @param {string} conversationId
+   */
+  async stopRun(conversationId) {
+    const response = await fetch(
+      `${API_BASE}/api/conversations/${conversationId}/stop`,
+      { method: 'POST' }
+    );
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      throw new Error(error?.detail || 'Failed to stop the run');
+    }
+    return response.json();
+  },
+
+  /**
    * Remaining OpenRouter credits and recent spending.
    * @param {boolean} fresh - Skip the server's short cache
    */

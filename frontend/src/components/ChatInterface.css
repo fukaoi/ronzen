@@ -699,3 +699,25 @@ a.file-chip:hover {
   cursor: not-allowed;
   opacity: 0.6;
 }
+
+/* While a run is going, the Send button becomes Stop */
+.send-button.stop-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  color: var(--accent);
+  box-shadow: 0 0 0 1.5px var(--accent), var(--nm-raised-sm);
+}
+
+.send-button.stop-button:hover:not(:disabled) {
+  background: var(--accent-gradient);
+  color: #fff;
+  filter: none;
+  box-shadow: var(--nm-accent);
+}
+
+.send-button.stop-button:disabled {
+  color: var(--text-faint);
+  box-shadow: var(--nm-raised-sm);
+}

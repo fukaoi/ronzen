@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Users, Stamp, ArrowUp, ArrowDown } from 'lucide-react';
+import { Users, Stamp, ArrowUp, ArrowDown, Square } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Stage1 from './Stage1';
@@ -26,6 +26,22 @@ const SEND_SHORTCUT =
 const SCROLL_DIRECTION_PX = 120;
 const SCROLL_END_PX = 100;
 const SCROLL_REVERSAL_PX = 12;
+
+// A saved message's uploads, as the input box lists them
+function attachmentsOf(message) {
+  return [
+    ...(message.images || []).map((filename) => ({
+      filename,
+      name: filename,
+      kind: 'image',
+    })),
+    ...(message.files || []).map((file) => ({
+      filename: file.filename,
+      name: file.name,
+      kind: 'text',
+    })),
+  ];
+}
 
 const ASK_MODES = [
   {
@@ -87,6 +103,8 @@ export default function ChatInterface({
   isLoading,
   busyElsewhere = false,
   onEditLastTurn,
+  onStopRun,
+  composerSeed,
   onDeleteLastTurn,
   onHandOff,
   initialAttachments,
@@ -96,6 +114,7 @@ export default function ChatInterface({
   const [attachments, setAttachments] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [askMode, setAskMode] = useState('council');
+  const [stopping, setStopping] = useState(false);
   const [uploadError, setUploadError] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const messagesEndRef = useRef(null);
@@ -174,8 +193,8 @@ export default function ChatInterface({
   // Clear the composer when switching conversations. A conversation just
   // created by a hand-off arrives with its carried-over summary ready to send.
   useEffect(() => {
-    setInput('');
-    setAttachments(initialAttachments ?? []);
+    setInput(composerSeed?.content ?? '');
+    setAttachments(composerSeed ? attachmentsOf(composerSeed) : (initialAttachments ?? []));
     setUploadError(null);
   }, [conversation?.id]);
 
@@ -258,24 +277,28 @@ export default function ChatInterface({
   /**
    * Take the last question back into the composer, attachments and all.
    */
+  // Put a question back in the input box, attachments included
+  const restoreToComposer = (message) => {
+    setInput(message.content || '');
+    setAttachments(attachmentsOf(message));
+    setUploadError(null);
+  };
+
   const handleEditLastTurn = async (message) => {
     const removed = await onEditLastTurn?.();
     if (!removed) return;
+    restoreToComposer(message);
+  };
 
-    setInput(message.content || '');
-    setAttachments([
-      ...(message.images || []).map((filename) => ({
-        filename,
-        name: filename,
-        kind: 'image',
-      })),
-      ...(message.files || []).map((file) => ({
-        filename: file.filename,
-        name: file.name,
-        kind: 'text',
-      })),
-    ]);
-    setUploadError(null);
+  // A wrong question, or the wrong mode: stop now and send it again
+  const handleStop = async () => {
+    setStopping(true);
+    try {
+      const removed = await onStopRun?.();
+      if (removed) restoreToComposer(removed);
+    } finally {
+      setStopping(false);
+    }
   };
 
   const handleDeleteLastTurn = async () => {
@@ -654,10 +677,25 @@ export default function ChatInterface({
             rows={3}
           />
           <div className="send-group">
-            <button type="submit" className="send-button" disabled={!canSend}>
-              {t('chat.send')}
-            </button>
-            <span className="send-shortcut">({SEND_SHORTCUT})</span>
+            {isLoading ? (
+              <button
+                type="button"
+                className="send-button stop-button"
+                onClick={handleStop}
+                disabled={stopping}
+                title={t('chat.stopHint')}
+              >
+                <Square size={13} fill="currentColor" aria-hidden="true" />
+                {stopping ? t('chat.stopping') : t('chat.stop')}
+              </button>
+            ) : (
+              <button type="submit" className="send-button" disabled={!canSend}>
+                {t('chat.send')}
+              </button>
+            )}
+            <span className="send-shortcut">
+              {isLoading ? '' : `(${SEND_SHORTCUT})`}
+            </span>
           </div>
         </div>
       </form>

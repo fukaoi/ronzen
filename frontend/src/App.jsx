@@ -35,6 +35,8 @@ function App() {
   const [view, setView] = useState('chat');
   const [showSettings, setShowSettings] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen);
+  // A question taken back by Stop, waiting for the start screen to put it in the box
+  const [composerSeed, setComposerSeed] = useState(null);
 
   const toggleSidebar = () => {
     setSidebarOpen((open) => {
@@ -109,6 +111,7 @@ function App() {
   // A new conversation is the empty start screen; it is only created, and only
   // appears in the list, once its first question is sent
   const handleNewConversation = () => {
+    setComposerSeed(null);
     setCurrentConversationId(null);
     setView('chat');
   };
@@ -134,6 +137,7 @@ function App() {
   };
 
   const handleSelectConversation = (id) => {
+    setComposerSeed(null);
     setCurrentConversationId(id);
     setView('chat');
   };
@@ -354,6 +358,10 @@ function App() {
         }));
         break;
 
+      case 'stopped':
+        // The run was stopped; the page that asked has already cleaned up
+        break;
+
       case 'title_complete':
         // Reload conversations to get updated title
         loadConversations();
@@ -423,6 +431,60 @@ function App() {
 
   // `files` carries both halves of a text attachment: the stored filename the
   // API needs, and the display name the message bubble shows right away.
+  /**
+   * Stop the run in progress, before it costs more.
+   *
+   * The server drops the model calls and takes the unanswered question back
+   * out; the page drops the question and the half-built answer too, and hands
+   * the question back so it can go in the input box again.
+   *
+   * @returns {Promise<object|null>} The question that was taken back, if any
+   */
+  const handleStopRun = async () => {
+    const conversationId = streamingIdRef.current;
+    if (!conversationId) return null;
+
+    let result;
+    try {
+      result = await api.stopRun(conversationId);
+    } catch (error) {
+      // Most likely the answer had just finished: nothing left to stop
+      console.error('Failed to stop the run:', error);
+      return null;
+    }
+
+    if (result.conversation_deleted) {
+      // The stopped question was the whole conversation: back to the start screen
+      // with the question waiting in the box
+      setConversationsById((prev) => {
+        const next = { ...prev };
+        delete next[conversationId];
+        return next;
+      });
+      setComposerSeed(result.removed);
+      setCurrentConversationId(null);
+      loadConversations();
+      return null;
+    }
+
+    setConversationsById((prev) => {
+      const conversation = prev[conversationId];
+      if (!conversation) return prev;
+      const messages = [...conversation.messages];
+      if (messages.length && messages[messages.length - 1].role === 'assistant') {
+        messages.pop();
+      }
+      if (messages.length && messages[messages.length - 1].role === 'user') {
+        messages.pop();
+      }
+      return { ...prev, [conversationId]: { ...conversation, messages } };
+    });
+
+    loadConversations();
+    refreshContextSize(conversationId);
+    return result.removed;
+  };
+
   const handleSendMessage = async (
     content,
     images = [],
@@ -430,6 +492,7 @@ function App() {
     mode = 'council'
   ) => {
     if (streamingIdRef.current) return;
+    setComposerSeed(null);
 
     // Pin the run to this conversation: every update below targets this id,
     // so looking at another conversation meanwhile changes nothing there.
@@ -544,6 +607,8 @@ function App() {
         onSendMessage={handleSendMessage}
         isLoading={streamingId !== null && streamingId === currentConversationId}
         busyElsewhere={streamingId !== null && streamingId !== currentConversationId}
+        onStopRun={handleStopRun}
+        composerSeed={composerSeed}
         onEditLastTurn={() => removeLastTurn(true)}
         onDeleteLastTurn={() => removeLastTurn(false)}
         onHandOff={handleHandOff}
