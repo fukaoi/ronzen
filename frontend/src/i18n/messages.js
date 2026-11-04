@@ -15,6 +15,8 @@ export const en = {
 
   // sidebar
   'sidebar.newConversation': 'New Conversation',
+  'sidebar.close': 'Close sidebar',
+  'sidebar.open': 'Open sidebar',
   'sidebar.missions': 'Missions β',
   'sidebar.none': 'No conversations yet',
   'sidebar.untitled': 'New Conversation',
@@ -188,6 +190,8 @@ export const ja = {
   'common.edit': '編集',
 
   'sidebar.newConversation': '新しい会話',
+  'sidebar.close': 'サイドバーを閉じる',
+  'sidebar.open': 'サイドバーを開く',
   'sidebar.missions': 'ミッション β',
   'sidebar.none': 'まだ会話がありません',
   'sidebar.untitled': '新しい会話',
@@ -354,6 +358,8 @@ export const zh = {
   'common.edit': '编辑',
 
   'sidebar.newConversation': '新对话',
+  'sidebar.close': '收起侧边栏',
+  'sidebar.open': '展开侧边栏',
   'sidebar.missions': '任务 β',
   'sidebar.none': '还没有对话',
   'sidebar.untitled': '新对话',
@@ -512,6 +518,8 @@ export const es = {
   'common.edit': 'Editar',
 
   'sidebar.newConversation': 'Nueva conversación',
+  'sidebar.close': 'Cerrar la barra lateral',
+  'sidebar.open': 'Abrir la barra lateral',
   'sidebar.missions': 'Misiones β',
   'sidebar.none': 'Aún no hay conversaciones',
   'sidebar.untitled': 'Nueva conversación',

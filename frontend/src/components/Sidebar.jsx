@@ -9,6 +9,7 @@ import './Sidebar.css';
 const MISSION_TITLE_PREFIX = 'Mission: ';
 
 export default function Sidebar({
+  open = true,
   conversations,
   currentConversationId,
   streamingId,
@@ -49,7 +50,7 @@ export default function Sidebar({
   };
 
   return (
-    <div className="sidebar">
+    <div className={`sidebar ${open ? '' : 'collapsed'}`} inert={!open}>
       <div className="sidebar-header">
         <div className="brand">
           <Logo size={44} />

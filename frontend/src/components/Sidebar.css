@@ -9,6 +9,26 @@
   height: 100vh;
   padding: 24px 18px;
   gap: 20px;
+  overflow: hidden;
+  transition: width 0.25s ease, padding 0.25s ease;
+}
+
+/* Closed: no width at all, and out of the tab order and the screen reader's
+   reach once it has finished sliding shut */
+.sidebar.collapsed {
+  width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  border-right-width: 0;
+  visibility: hidden;
+  transition: width 0.25s ease, padding 0.25s ease, visibility 0s linear 0.25s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .sidebar.collapsed {
+    transition: none;
+  }
 }
 
 /* Seigaiha, the wave pattern, fading out from the foot of the sidebar */

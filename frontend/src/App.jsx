@@ -3,8 +3,19 @@ import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import MissionPanel from './components/MissionPanel';
 import SettingsDialog from './components/SettingsDialog';
+import SidebarToggle from './components/SidebarToggle';
 import { api } from './api';
 import './App.css';
+
+const SIDEBAR_KEY = 'ronzen.sidebar';
+
+function readSidebarOpen() {
+  try {
+    return localStorage.getItem(SIDEBAR_KEY) !== 'closed';
+  } catch {
+    return true;
+  }
+}
 
 function App() {
   const [conversations, setConversations] = useState([]);
@@ -12,6 +23,18 @@ function App() {
   // 'chat' shows the selected conversation, 'missions' the mission loop
   const [view, setView] = useState('chat');
   const [showSettings, setShowSettings] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen);
+
+  const toggleSidebar = () => {
+    setSidebarOpen((open) => {
+      try {
+        localStorage.setItem(SIDEBAR_KEY, open ? 'closed' : 'open');
+      } catch {
+        // The choice still applies for this visit
+      }
+      return !open;
+    });
+  };
 
   // Conversations are kept by id rather than as a single "current" object.
   // A council run streams its stages into the conversation it belongs to, and
@@ -465,6 +488,7 @@ function App() {
   return (
     <div className="app">
       <Sidebar
+        open={sidebarOpen}
         conversations={conversations}
         currentConversationId={currentConversationId}
         streamingId={streamingId}
@@ -483,6 +507,8 @@ function App() {
           }
         }}
       />
+      <div className="main-area">
+      <SidebarToggle open={sidebarOpen} onToggle={toggleSidebar} />
       {view === 'missions' ? (
         <MissionPanel />
       ) : (
@@ -497,6 +523,7 @@ function App() {
         initialAttachments={pendingAttachments[currentConversationId]}
       />
       )}
+      </div>
       {showSettings && (
         <SettingsDialog onClose={() => setShowSettings(false)} />
       )}

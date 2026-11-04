@@ -2,6 +2,45 @@
   box-sizing: border-box;
 }
 
+.main-area {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Small and faint while the sidebar is open; once it is closed the button takes
+   the accent colour and a ring, so the state shows without a large control */
+.sidebar-toggle {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: background var(--ease), color var(--ease), box-shadow var(--ease);
+}
+
+.sidebar-toggle:hover {
+  background: var(--bg-sunken);
+  color: var(--accent);
+}
+
+.sidebar-toggle.closed {
+  background: var(--bg);
+  color: var(--accent);
+  box-shadow: var(--nm-raised-sm);
+}
+
 .app {
   display: flex;
   height: 100vh;
